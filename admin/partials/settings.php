@@ -36,6 +36,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 		<!-- General Tab -->
 		<div id="tab-general" class="ai-seo-pilot-tab-content active">
+			<h2><?php esc_html_e( 'License', 'ai-seo-pilot' ); ?></h2>
+			<table class="form-table">
+				<?php Pilot_Updater::render_license_field( 'ai-seo-pilot' ); ?>
+			</table>
+
+			<h2><?php esc_html_e( 'Features', 'ai-seo-pilot' ); ?></h2>
 			<table class="form-table">
 				<tr>
 					<th scope="row">

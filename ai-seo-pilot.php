@@ -56,6 +56,10 @@ spl_autoload_register( function ( $class ) {
 register_activation_hook( __FILE__, array( 'AI_SEO_Pilot_Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'AI_SEO_Pilot_Deactivator', 'deactivate' ) );
 
+/* ── Pilot Updater ────────────────────────────────────────────── */
+require_once __DIR__ . '/pilot-updater/class-pilot-updater.php';
+new Pilot_Updater( 'ai-seo-pilot', __FILE__ );
+
 /* ── Bootstrap ────────────────────────────────────────────────── */
 add_action( 'plugins_loaded', function () {
 	AI_SEO_Pilot::get_instance()->init();

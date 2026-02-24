@@ -270,12 +270,22 @@ class Pilot_Updater {
         $license_key = sanitize_text_field($_POST['license_key'] ?? '');
 
         if (empty($license_key)) {
+            $old_key = get_option($this->license_option, '');
+            if ($old_key) {
+                wp_remote_post(self::API_BASE . "/deactivate/{$this->slug}", [
+                    'timeout' => 10,
+                    'body'    => [
+                        'license_key' => $old_key,
+                        'site_url'    => get_site_url(),
+                    ],
+                ]);
+            }
             delete_option($this->license_option);
             $this->clear_cache();
             wp_send_json_success('License removed');
         }
 
-        $response = wp_remote_get(self::API_BASE . "/info/{$this->slug}?license_key=" . urlencode($license_key), [
+        $response = wp_remote_get(self::API_BASE . "/info/{$this->slug}?license_key=" . urlencode($license_key) . '&site_url=' . urlencode(get_site_url()), [
             'timeout' => 15,
         ]);
 
@@ -286,9 +296,15 @@ class Pilot_Updater {
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if (!empty($body['license_valid'])) {
+            $msg = 'Active';
+            if (isset($body['activations'], $body['activation_limit'])) {
+                $msg .= " ({$body['activations']}/{$body['activation_limit']} sites)";
+            }
             update_option($this->license_option, $license_key, false);
             $this->clear_cache();
-            wp_send_json_success('Active');
+            wp_send_json_success($msg);
+        } elseif (!empty($body['activation_error'])) {
+            wp_send_json_error($body['activation_message'] ?? 'Activation limit reached');
         } else {
             wp_send_json_error('Invalid license key');
         }
@@ -307,9 +323,12 @@ class Pilot_Updater {
 
         $license_key = get_option($this->license_option, '');
         $url = self::API_BASE . "/info/{$this->slug}";
+        $params = [];
         if ($license_key) {
-            $url .= '?license_key=' . urlencode($license_key);
+            $params['license_key'] = $license_key;
         }
+        $params['site_url'] = get_site_url();
+        $url .= '?' . http_build_query($params);
 
         $response = wp_remote_get($url, ['timeout' => 15]);
 

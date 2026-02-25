@@ -44,10 +44,9 @@ class AI_SEO_Pilot_AI_Engine {
 				'endpoint' => 'https://generativelanguage.googleapis.com/v1beta/models/',
 				'format'   => 'gemini',
 				'models'   => array(
+					'gemini-2.5-flash'      => 'Gemini 2.5 Flash (best value)',
 					'gemini-2.0-flash'      => 'Gemini 2.0 Flash (fast)',
 					'gemini-2.0-flash-lite' => 'Gemini 2.0 Flash Lite (cheapest)',
-					'gemini-1.5-pro'        => 'Gemini 1.5 Pro (best quality)',
-					'gemini-1.5-flash'      => 'Gemini 1.5 Flash',
 				),
 				'auth'     => 'api_key',
 				'key_url'  => 'https://aistudio.google.com/apikey',

@@ -115,10 +115,20 @@ class AI_SEO_Pilot_Admin {
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_schema_website' );
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_organization_same_as' );
 
-		// Content Analysis (no extra settings currently).
+		// Content Analysis.
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_content_analysis', array(
+			'type'              => 'array',
+			'sanitize_callback' => array( $this, 'sanitize_content_analysis' ),
+			'default'           => array(),
+		) );
 
 		// AI Bots.
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_bot_retention_days' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_custom_bots', array(
+			'type'              => 'array',
+			'sanitize_callback' => array( $this, 'sanitize_custom_bots' ),
+			'default'           => array(),
+		) );
 
 		// AI API — provider selector.
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_ai_provider' );
@@ -298,6 +308,63 @@ class AI_SEO_Pilot_Admin {
 		if ( ! is_wp_error( $description ) && ! empty( $description ) ) {
 			update_post_meta( $post->ID, '_ai_seo_pilot_meta_description', sanitize_text_field( $description ) );
 		}
+	}
+
+	/* ── Content Analysis Sanitization ───────────────────────── */
+
+	public function sanitize_content_analysis( $input ) {
+		$defaults  = AI_SEO_Pilot_Content_Analyzer::get_defaults();
+		$sanitized = array();
+
+		$sanitized['ai_ready_threshold'] = isset( $input['ai_ready_threshold'] )
+			? max( 0, min( 100, absint( $input['ai_ready_threshold'] ) ) )
+			: $defaults['ai_ready_threshold'];
+
+		$sanitized['checks'] = array();
+		foreach ( $defaults['checks'] as $key => $def ) {
+			$src = isset( $input['checks'][ $key ] ) ? $input['checks'][ $key ] : array();
+			$sanitized['checks'][ $key ] = array(
+				'enabled' => ! empty( $src['enabled'] ),
+				'weight'  => isset( $src['weight'] ) ? max( 0, min( 20, absint( $src['weight'] ) ) ) : $def['weight'],
+			);
+			// Sanitize each check-specific threshold.
+			foreach ( $def as $param => $default_val ) {
+				if ( in_array( $param, array( 'enabled', 'weight' ), true ) ) {
+					continue;
+				}
+				$sanitized['checks'][ $key ][ $param ] = isset( $src[ $param ] )
+					? max( 0, absint( $src[ $param ] ) )
+					: $default_val;
+			}
+		}
+
+		return $sanitized;
+	}
+
+	/* ── Custom Bots Sanitization ────────────────────────────── */
+
+	public function sanitize_custom_bots( $input ) {
+		if ( ! is_array( $input ) ) {
+			return array();
+		}
+
+		$sanitized = array();
+		foreach ( $input as $bot ) {
+			if ( ! is_array( $bot ) ) {
+				continue;
+			}
+			$identifier = isset( $bot['identifier'] ) ? sanitize_text_field( trim( $bot['identifier'] ) ) : '';
+			if ( empty( $identifier ) ) {
+				continue;
+			}
+			$sanitized[] = array(
+				'identifier' => $identifier,
+				'name'       => isset( $bot['name'] ) ? sanitize_text_field( trim( $bot['name'] ) ) : $identifier,
+				'service'    => isset( $bot['service'] ) ? sanitize_text_field( trim( $bot['service'] ) ) : '',
+			);
+		}
+
+		return $sanitized;
 	}
 
 	/* ── AJAX Handlers ───────────────────────────────────────── */

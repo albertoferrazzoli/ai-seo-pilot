@@ -548,3 +548,9 @@
 	background: #f8d7da;
 	color: #721c24;
 }
+
+/* Content Analysis settings table */
+.ai-seo-pilot-ca-checks.widefat th,
+.ai-seo-pilot-ca-checks.widefat td {
+	vertical-align: middle;
+}

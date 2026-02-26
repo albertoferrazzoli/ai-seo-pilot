@@ -14,24 +14,65 @@ class AI_SEO_Pilot_AI_Visibility {
 	/** @var string Database table name (set in constructor). */
 	private $table;
 
-	/** @var array<string, string> Known AI bot identifiers mapped to display names. */
-	private $known_bots = array(
-		'GPTBot'           => 'GPTBot',
-		'ChatGPT-User'    => 'ChatGPT-User',
-		'Claude-Web'      => 'Claude-Web',
-		'ClaudeBot'       => 'ClaudeBot',
-		'PerplexityBot'   => 'PerplexityBot',
-		'Google-Extended' => 'Google-Extended',
-		'Amazonbot'       => 'Amazonbot',
-		'Bytespider'      => 'Bytespider',
-		'cohere-ai'       => 'cohere-ai',
-		'YouBot'          => 'YouBot',
+	/**
+	 * Built-in AI bot definitions: identifier => array( name, service ).
+	 *
+	 * @var array<string, array{name: string, service: string}>
+	 */
+	private static $builtin_bots = array(
+		'GPTBot'           => array( 'name' => 'GPTBot',           'service' => 'OpenAI / ChatGPT' ),
+		'ChatGPT-User'    => array( 'name' => 'ChatGPT-User',    'service' => 'ChatGPT Browse' ),
+		'Claude-Web'      => array( 'name' => 'Claude-Web',      'service' => 'Anthropic Claude' ),
+		'ClaudeBot'       => array( 'name' => 'ClaudeBot',       'service' => 'Anthropic Claude' ),
+		'PerplexityBot'   => array( 'name' => 'PerplexityBot',   'service' => 'Perplexity AI' ),
+		'Google-Extended' => array( 'name' => 'Google-Extended', 'service' => 'Google Gemini' ),
+		'Amazonbot'       => array( 'name' => 'Amazonbot',       'service' => 'Amazon Alexa / AI' ),
+		'Bytespider'      => array( 'name' => 'Bytespider',      'service' => 'ByteDance' ),
+		'cohere-ai'       => array( 'name' => 'cohere-ai',       'service' => 'Cohere' ),
+		'YouBot'          => array( 'name' => 'YouBot',          'service' => 'You.com' ),
 	);
+
+	/** @var array<string, string> Resolved bot identifiers → display names (built-in + custom). */
+	private $known_bots;
+
+	/**
+	 * Get all tracked bots (built-in + custom) with service info.
+	 *
+	 * @return array<string, array{name: string, service: string, builtin: bool}>
+	 */
+	public static function get_all_bots() {
+		$bots = array();
+		foreach ( self::$builtin_bots as $id => $info ) {
+			$bots[ $id ] = array_merge( $info, array( 'builtin' => true ) );
+		}
+
+		$custom = get_option( 'ai_seo_pilot_custom_bots', array() );
+		if ( is_array( $custom ) ) {
+			foreach ( $custom as $bot ) {
+				if ( ! empty( $bot['identifier'] ) ) {
+					$id = sanitize_text_field( $bot['identifier'] );
+					$bots[ $id ] = array(
+						'name'    => ! empty( $bot['name'] ) ? $bot['name'] : $id,
+						'service' => ! empty( $bot['service'] ) ? $bot['service'] : '',
+						'builtin' => false,
+					);
+				}
+			}
+		}
+
+		return $bots;
+	}
 
 	public function __construct() {
 		global $wpdb;
 
 		$this->table = $wpdb->prefix . 'ai_seo_pilot_bot_visits';
+
+		// Build known_bots lookup (identifier → display name) from built-in + custom.
+		$this->known_bots = array();
+		foreach ( self::get_all_bots() as $id => $info ) {
+			$this->known_bots[ $id ] = $info['name'];
+		}
 
 		// Track bot visits on every frontend request (early priority).
 		add_action( 'init', array( $this, 'track_visit' ), 1 );

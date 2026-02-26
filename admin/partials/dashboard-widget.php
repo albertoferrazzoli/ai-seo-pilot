@@ -12,18 +12,23 @@ $top_pages    = $plugin->ai_visibility->get_top_pages( 7, 3 );
 $recent_posts   = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'posts_per_page' => 10 ) );
 $analyzed_count = 0;
 $ready_count    = 0;
-$total_score    = 0;
+$total_pct      = 0;
+
+$ca_saved     = get_option( 'ai_seo_pilot_content_analysis', array() );
+$ca_threshold = ! empty( $ca_saved['ai_ready_threshold'] )
+	? (int) $ca_saved['ai_ready_threshold']
+	: AI_SEO_Pilot_Content_Analyzer::get_defaults()['ai_ready_threshold'];
 
 foreach ( $recent_posts as $p ) {
 	$result = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
 	$analyzed_count++;
-	$total_score += $result['score'];
+	$total_pct += $result['percentage'];
 	if ( $result['ai_ready'] ) {
 		$ready_count++;
 	}
 }
 
-$avg_score = $analyzed_count > 0 ? round( $total_score / $analyzed_count ) : 0;
+$avg_score = $analyzed_count > 0 ? round( $total_pct / $analyzed_count ) : 0;
 
 // Features status.
 $features = array(
@@ -83,14 +88,14 @@ $features = array(
 		<div class="aisp-widget-stat">
 			<?php
 			$score_bg = '#d63638';
-			if ( $avg_score >= 75 ) {
+			if ( $avg_score >= $ca_threshold ) {
 				$score_bg = '#00a32a';
 			} elseif ( $avg_score >= 50 ) {
 				$score_bg = '#dba617';
 			}
 			?>
 			<span class="aisp-widget-score" style="background:<?php echo esc_attr( $score_bg ); ?>;">
-				<?php echo esc_html( $avg_score ); ?>
+				<?php echo esc_html( $avg_score ); ?>%
 			</span>
 			<span class="lbl"><?php esc_html_e( 'Avg AI Score', 'ai-seo-pilot' ); ?></span>
 		</div>
@@ -100,7 +105,10 @@ $features = array(
 	<?php if ( $analyzed_count > 0 ) : ?>
 		<p style="margin:0 0 6px;">
 			<strong><?php echo esc_html( $ready_count ); ?>/<?php echo esc_html( $analyzed_count ); ?></strong>
-			<?php esc_html_e( 'recent posts are AI-ready (score 75+)', 'ai-seo-pilot' ); ?>
+			<?php
+			/* translators: %d: threshold percentage */
+			echo esc_html( sprintf( __( 'recent posts are AI-ready (score %d+)', 'ai-seo-pilot' ), $ca_threshold ) );
+		?>
 		</p>
 	<?php endif; ?>
 

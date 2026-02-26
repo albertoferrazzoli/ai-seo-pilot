@@ -382,19 +382,26 @@ class AI_SEO_Pilot_SEO_Checker {
 			);
 		}
 
-		$total_score = 0;
+		$ca_settings = AI_SEO_Pilot_Content_Analyzer::get_defaults();
+		$saved       = get_option( 'ai_seo_pilot_content_analysis', array() );
+		if ( ! empty( $saved['ai_ready_threshold'] ) ) {
+			$ca_settings['ai_ready_threshold'] = (int) $saved['ai_ready_threshold'];
+		}
+		$threshold = $ca_settings['ai_ready_threshold'];
+
+		$total_pct   = 0;
 		$ready_count = 0;
 
 		foreach ( $recent_posts as $p ) {
-			$result       = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
-			$total_score += $result['score'];
+			$result     = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
+			$total_pct += $result['percentage'];
 			if ( $result['ai_ready'] ) {
 				$ready_count++;
 			}
 		}
 
-		$avg    = round( $total_score / count( $recent_posts ) );
-		$status = $avg >= 75 ? 'pass' : ( $avg >= 50 ? 'warning' : 'fail' );
+		$avg    = round( $total_pct / count( $recent_posts ) );
+		$status = $avg >= $threshold ? 'pass' : ( $avg >= 50 ? 'warning' : 'fail' );
 
 		return array(
 			'category'   => __( 'Content', 'ai-seo-pilot' ),
@@ -402,11 +409,12 @@ class AI_SEO_Pilot_SEO_Checker {
 			'severity'   => 'high',
 			'status'     => $status,
 			'message'    => sprintf(
-				/* translators: %1$d: avg score, %2$d: ready count, %3$d: total */
-				__( 'Average AI score: %1$d/100. %2$d of %3$d recent posts are AI-ready (75+).', 'ai-seo-pilot' ),
+				/* translators: %1$d: avg percentage, %2$d: ready count, %3$d: total, %4$d: threshold */
+				__( 'Average AI score: %1$d%%. %2$d of %3$d recent posts are AI-ready (%4$d%%+).', 'ai-seo-pilot' ),
 				$avg,
 				$ready_count,
-				count( $recent_posts )
+				count( $recent_posts ),
+				$threshold
 			),
 			'fix'        => 'pass' !== $status ? __( 'Use the Gutenberg sidebar analyzer to improve individual posts.', 'ai-seo-pilot' ) : '',
 			'fix_action' => null,

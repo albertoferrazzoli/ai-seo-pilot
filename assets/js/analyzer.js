@@ -29,17 +29,19 @@
 	}
 
 	function ScoreCircle(props) {
+		var percentage = props.percentage || 0;
 		var score = props.score || 0;
+		var maxScore = props.maxScore || 100;
 		var color;
-		if (score >= 75) color = '#00a32a';
-		else if (score >= 50) color = '#dba617';
+		if (percentage >= 75) color = '#00a32a';
+		else if (percentage >= 50) color = '#dba617';
 		else color = '#d63638';
 
 		var size = 80;
 		var strokeWidth = 6;
 		var radius = (size - strokeWidth) / 2;
 		var circumference = 2 * Math.PI * radius;
-		var offset = circumference - (score / 100) * circumference;
+		var offset = circumference - (percentage / 100) * circumference;
 
 		return el('div', { style: { textAlign: 'center', padding: '16px 0' } },
 			el('svg', { width: size, height: size, viewBox: '0 0 ' + size + ' ' + size },
@@ -59,11 +61,11 @@
 				el('text', {
 					x: '50%', y: '50%', textAnchor: 'middle', dominantBaseline: 'central',
 					fontSize: '22', fontWeight: '700', fill: '#1d2327'
-				}, score)
+				}, percentage + '%')
 			),
 			el('span', {
-				style: { display: 'block', marginTop: 4, color: '#757575', fontSize: 12, textTransform: 'uppercase' }
-			}, 'AI Readiness Score')
+				style: { display: 'block', marginTop: 4, color: '#757575', fontSize: 12 }
+			}, score + ' / ' + maxScore + ' pts')
 		);
 	}
 
@@ -154,7 +156,11 @@
 			});
 
 			content = el(Fragment, null,
-				el(ScoreCircle, { score: result.score }),
+				el(ScoreCircle, {
+					percentage: result.percentage,
+					score: result.score,
+					maxScore: result.max_score
+				}),
 				el('div', { style: { textAlign: 'center', marginBottom: 16 } },
 					el('span', {
 						style: {

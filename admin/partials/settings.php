@@ -360,30 +360,197 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 
 		<!-- Content Analysis Tab -->
+		<?php
+		$ca_settings = get_option( 'ai_seo_pilot_content_analysis', array() );
+		$ca_defaults = AI_SEO_Pilot_Content_Analyzer::get_defaults();
+		$ca_settings = wp_parse_args( $ca_settings, $ca_defaults );
+		// Merge each check's settings with defaults.
+		foreach ( $ca_defaults['checks'] as $key => $def ) {
+			$ca_settings['checks'][ $key ] = wp_parse_args(
+				isset( $ca_settings['checks'][ $key ] ) ? $ca_settings['checks'][ $key ] : array(),
+				$def
+			);
+		}
+		?>
 		<div id="tab-content-analysis" class="ai-seo-pilot-tab-content" style="display:none;">
-			<p><?php esc_html_e( 'Content analysis runs in the Gutenberg editor sidebar. Open any post to see your AI-readiness score.', 'ai-seo-pilot' ); ?></p>
-			<h3><?php esc_html_e( 'Scoring Criteria', 'ai-seo-pilot' ); ?></h3>
-			<table class="widefat striped">
+			<p><?php esc_html_e( 'Configure which checks run in the Gutenberg editor sidebar and how they are scored.', 'ai-seo-pilot' ); ?></p>
+
+			<table class="form-table">
+				<tr>
+					<th scope="row">
+						<label for="ca_ai_ready_threshold"><?php esc_html_e( 'AI-Ready Threshold', 'ai-seo-pilot' ); ?></label>
+					</th>
+					<td>
+						<input type="number" id="ca_ai_ready_threshold"
+							name="ai_seo_pilot_content_analysis[ai_ready_threshold]"
+							value="<?php echo esc_attr( $ca_settings['ai_ready_threshold'] ); ?>"
+							min="0" max="100" class="small-text">
+						<span>%</span>
+						<p class="description"><?php esc_html_e( 'Percentage of total points required to display the "AI-Ready" badge.', 'ai-seo-pilot' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<h3><?php esc_html_e( 'Scoring Checks', 'ai-seo-pilot' ); ?></h3>
+			<table class="widefat striped ai-seo-pilot-ca-checks">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Check', 'ai-seo-pilot' ); ?></th>
-						<th><?php esc_html_e( 'Points', 'ai-seo-pilot' ); ?></th>
+						<th style="width:60px"><?php esc_html_e( 'Enabled', 'ai-seo-pilot' ); ?></th>
+						<th style="width:200px"><?php esc_html_e( 'Check', 'ai-seo-pilot' ); ?></th>
+						<th style="width:80px"><?php esc_html_e( 'Weight', 'ai-seo-pilot' ); ?></th>
+						<th style="width:130px;text-align:right"><?php esc_html_e( 'Threshold', 'ai-seo-pilot' ); ?></th>
+						<th style="width:70px"></th>
 						<th><?php esc_html_e( 'Description', 'ai-seo-pilot' ); ?></th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr><td><?php esc_html_e( 'Direct Answer', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'First paragraph provides a clear, concise answer', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Q&A Structure', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Contains question headings (H2/H3 with ?)', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Definitions', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Contains definition patterns ("X is…", "defined as")', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Paragraph Length', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Average paragraph under 150 words', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'List Optimization', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Contains ordered/unordered lists or tables', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Entity Density', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Proper nouns and named entities per 100 words', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Citable Statistics', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Numbers with context (percentages, amounts)', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Semantic Completeness', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Sufficient word count with intro and conclusion', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Snippet Optimization', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Concise summary paragraph with bold formatting', 'ai-seo-pilot' ); ?></td></tr>
-					<tr><td><?php esc_html_e( 'Freshness Signals', 'ai-seo-pilot' ); ?></td><td>10</td><td><?php esc_html_e( 'Date references, "updated", "latest" keywords', 'ai-seo-pilot' ); ?></td></tr>
+					<?php
+					$check_meta = array(
+						'direct_answer' => array(
+							'label'       => __( 'Direct Answer', 'ai-seo-pilot' ),
+							'description' => __( 'First paragraph provides a clear, concise answer', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'max_chars',
+								'label' => __( 'Max chars', 'ai-seo-pilot' ),
+								'min'   => 50,
+								'max'   => 500,
+							),
+						),
+						'qa_structure' => array(
+							'label'       => __( 'Q&A Structure', 'ai-seo-pilot' ),
+							'description' => __( 'Contains question headings (H2/H3 with ?)', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_questions',
+								'label' => __( 'Min questions', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+						'definitions' => array(
+							'label'       => __( 'Definitions', 'ai-seo-pilot' ),
+							'description' => __( 'Contains definition patterns ("X is...", "defined as")', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_definitions',
+								'label' => __( 'Min definitions', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+						'paragraph_length' => array(
+							'label'       => __( 'Paragraph Length', 'ai-seo-pilot' ),
+							'description' => __( 'Average paragraph within target word count', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'max_avg_words',
+								'label' => __( 'Max avg words', 'ai-seo-pilot' ),
+								'min'   => 50,
+								'max'   => 500,
+							),
+						),
+						'list_optimization' => array(
+							'label'       => __( 'List Optimization', 'ai-seo-pilot' ),
+							'description' => __( 'Contains ordered/unordered lists or tables', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_lists',
+								'label' => __( 'Min lists/tables', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+						'entity_density' => array(
+							'label'       => __( 'Entity Density', 'ai-seo-pilot' ),
+							'description' => __( 'Proper nouns and named entities per 100 words', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_density',
+								'label' => __( 'Min % density', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+						'citable_statistics' => array(
+							'label'       => __( 'Citable Statistics', 'ai-seo-pilot' ),
+							'description' => __( 'Numbers with context (percentages, amounts)', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_stats',
+								'label' => __( 'Min statistics', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+						'semantic_completeness' => array(
+							'label'       => __( 'Semantic Completeness', 'ai-seo-pilot' ),
+							'description' => __( 'Sufficient word count with intro and conclusion', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_words',
+								'label' => __( 'Min words', 'ai-seo-pilot' ),
+								'min'   => 100,
+								'max'   => 2000,
+								'step'  => 50,
+							),
+						),
+						'snippet_optimization' => array(
+							'label'       => __( 'Snippet Optimization', 'ai-seo-pilot' ),
+							'description' => __( 'Concise summary paragraph with bold formatting', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'max_summary_words',
+								'label' => __( 'Max summary words', 'ai-seo-pilot' ),
+								'min'   => 20,
+								'max'   => 150,
+							),
+						),
+						'freshness_signals' => array(
+							'label'       => __( 'Freshness Signals', 'ai-seo-pilot' ),
+							'description' => __( 'Date references, "updated", "latest" keywords', 'ai-seo-pilot' ),
+							'threshold'   => array(
+								'key'   => 'min_signals',
+								'label' => __( 'Min signals', 'ai-seo-pilot' ),
+								'min'   => 1,
+								'max'   => 10,
+							),
+						),
+					);
+
+					foreach ( $check_meta as $key => $meta ) :
+						$check   = $ca_settings['checks'][ $key ];
+						$enabled = ! empty( $check['enabled'] );
+						$weight  = isset( $check['weight'] ) ? (int) $check['weight'] : 10;
+						$t_key   = $meta['threshold']['key'];
+						$t_val   = isset( $check[ $t_key ] ) ? $check[ $t_key ] : '';
+						$t_step  = isset( $meta['threshold']['step'] ) ? $meta['threshold']['step'] : 1;
+					?>
+					<tr>
+						<td class="check-col" style="text-align:center">
+							<input type="hidden" name="ai_seo_pilot_content_analysis[checks][<?php echo esc_attr( $key ); ?>][enabled]" value="0">
+							<input type="checkbox"
+								name="ai_seo_pilot_content_analysis[checks][<?php echo esc_attr( $key ); ?>][enabled]"
+								value="1" <?php checked( $enabled ); ?>>
+						</td>
+						<td><strong><?php echo esc_html( $meta['label'] ); ?></strong></td>
+						<td>
+							<input type="number"
+								name="ai_seo_pilot_content_analysis[checks][<?php echo esc_attr( $key ); ?>][weight]"
+								value="<?php echo esc_attr( $weight ); ?>"
+								min="0" max="20" class="small-text" style="width:60px">
+						</td>
+						<td style="text-align:right;font-size:12px;color:#646970;white-space:nowrap">
+							<?php echo esc_html( $meta['threshold']['label'] ); ?>:
+						</td>
+						<td>
+							<input type="number"
+								name="ai_seo_pilot_content_analysis[checks][<?php echo esc_attr( $key ); ?>][<?php echo esc_attr( $t_key ); ?>]"
+								value="<?php echo esc_attr( $t_val ); ?>"
+								min="<?php echo esc_attr( $meta['threshold']['min'] ); ?>"
+								max="<?php echo esc_attr( $meta['threshold']['max'] ); ?>"
+								step="<?php echo esc_attr( $t_step ); ?>"
+								class="small-text" style="width:60px">
+						</td>
+						<td><span class="description"><?php echo esc_html( $meta['description'] ); ?></span></td>
+					</tr>
+					<?php endforeach; ?>
 				</tbody>
 			</table>
+			<p class="description" style="margin-top:8px">
+				<?php esc_html_e( 'Weight determines the maximum points for each check. The total score is calculated as a percentage of achieved points vs. total possible points.', 'ai-seo-pilot' ); ?>
+			</p>
 		</div>
 
 		<!-- AI Bots Tab -->
@@ -403,26 +570,73 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</tr>
 			</table>
 			<h3><?php esc_html_e( 'Tracked AI Bots', 'ai-seo-pilot' ); ?></h3>
-			<table class="widefat striped">
+			<?php $all_bots = AI_SEO_Pilot_AI_Visibility::get_all_bots(); ?>
+			<table class="widefat striped" id="ai-seo-pilot-bots-table">
 				<thead>
 					<tr>
-						<th><?php esc_html_e( 'Bot Name', 'ai-seo-pilot' ); ?></th>
+						<th><?php esc_html_e( 'UA Identifier', 'ai-seo-pilot' ); ?></th>
+						<th><?php esc_html_e( 'Display Name', 'ai-seo-pilot' ); ?></th>
 						<th><?php esc_html_e( 'Service', 'ai-seo-pilot' ); ?></th>
+						<th style="width:80px"></th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr><td>GPTBot</td><td>OpenAI / ChatGPT</td></tr>
-					<tr><td>ChatGPT-User</td><td>ChatGPT Browse</td></tr>
-					<tr><td>Claude-Web</td><td>Anthropic Claude</td></tr>
-					<tr><td>ClaudeBot</td><td>Anthropic Claude</td></tr>
-					<tr><td>PerplexityBot</td><td>Perplexity AI</td></tr>
-					<tr><td>Google-Extended</td><td>Google Gemini</td></tr>
-					<tr><td>Amazonbot</td><td>Amazon Alexa / AI</td></tr>
-					<tr><td>Bytespider</td><td>ByteDance</td></tr>
-					<tr><td>cohere-ai</td><td>Cohere</td></tr>
-					<tr><td>YouBot</td><td>You.com</td></tr>
+					<?php foreach ( $all_bots as $id => $bot ) : ?>
+					<tr>
+						<td><code><?php echo esc_html( $id ); ?></code></td>
+						<td><?php echo esc_html( $bot['name'] ); ?></td>
+						<td><?php echo esc_html( $bot['service'] ); ?></td>
+						<td style="text-align:center">
+							<?php if ( empty( $bot['builtin'] ) ) : ?>
+								<button type="button" class="button-link ai-seo-pilot-custom-badge"
+									style="color:#d63638"
+									title="<?php esc_attr_e( 'Remove', 'ai-seo-pilot' ); ?>"
+									data-identifier="<?php echo esc_attr( $id ); ?>"
+									onclick="this.closest('tr').remove()">
+									<?php esc_html_e( 'Remove', 'ai-seo-pilot' ); ?>
+								</button>
+							<?php else : ?>
+								<span style="color:#8c8f94"><?php esc_html_e( 'built-in', 'ai-seo-pilot' ); ?></span>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<?php endforeach; ?>
 				</tbody>
 			</table>
+
+			<?php
+			// Render hidden inputs for existing custom bots.
+			$custom_bots = get_option( 'ai_seo_pilot_custom_bots', array() );
+			?>
+			<div id="ai-seo-pilot-custom-bots-inputs">
+				<?php if ( is_array( $custom_bots ) ) : ?>
+					<?php foreach ( $custom_bots as $i => $bot ) : ?>
+						<div class="ai-seo-pilot-custom-bot-row" data-identifier="<?php echo esc_attr( $bot['identifier'] ); ?>">
+							<input type="hidden" name="ai_seo_pilot_custom_bots[<?php echo (int) $i; ?>][identifier]" value="<?php echo esc_attr( $bot['identifier'] ); ?>">
+							<input type="hidden" name="ai_seo_pilot_custom_bots[<?php echo (int) $i; ?>][name]" value="<?php echo esc_attr( $bot['name'] ); ?>">
+							<input type="hidden" name="ai_seo_pilot_custom_bots[<?php echo (int) $i; ?>][service]" value="<?php echo esc_attr( $bot['service'] ); ?>">
+						</div>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</div>
+
+			<h4><?php esc_html_e( 'Add Custom Bot', 'ai-seo-pilot' ); ?></h4>
+			<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+				<div>
+					<label style="display:block;font-size:12px;margin-bottom:2px"><?php esc_html_e( 'UA Identifier', 'ai-seo-pilot' ); ?></label>
+					<input type="text" id="ai-seo-pilot-new-bot-id" class="regular-text" style="width:180px" placeholder="e.g. MetaBot">
+				</div>
+				<div>
+					<label style="display:block;font-size:12px;margin-bottom:2px"><?php esc_html_e( 'Display Name', 'ai-seo-pilot' ); ?></label>
+					<input type="text" id="ai-seo-pilot-new-bot-name" class="regular-text" style="width:180px" placeholder="e.g. MetaBot">
+				</div>
+				<div>
+					<label style="display:block;font-size:12px;margin-bottom:2px"><?php esc_html_e( 'Service', 'ai-seo-pilot' ); ?></label>
+					<input type="text" id="ai-seo-pilot-new-bot-service" class="regular-text" style="width:180px" placeholder="e.g. Meta AI">
+				</div>
+				<button type="button" class="button" id="ai-seo-pilot-add-bot"><?php esc_html_e( 'Add Bot', 'ai-seo-pilot' ); ?></button>
+			</div>
+			<p class="description"><?php esc_html_e( 'Custom bots will be tracked alongside the built-in list. Click Save Changes to apply.', 'ai-seo-pilot' ); ?></p>
 		</div>
 
 		<!-- Advanced Tab -->

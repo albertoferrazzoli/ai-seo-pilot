@@ -14,12 +14,76 @@ class AI_SEO_Pilot_Content_Analyzer {
 	/** @var string REST namespace. */
 	private $namespace = 'ai-seo-pilot/v1';
 
+	/** @var array Resolved settings (defaults merged with DB). */
+	private $settings;
+
 	public function __construct() {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
 	}
 
-	/* ── REST API ─────────────────────────────────────────────────── */
+	/* ── Settings ─────────────────────────────────────────────── */
+
+	/**
+	 * Return hard-coded default settings.
+	 *
+	 * @return array
+	 */
+	public static function get_defaults() {
+		return array(
+			'ai_ready_threshold' => 75,
+			'checks'             => array(
+				'direct_answer'        => array( 'enabled' => true, 'weight' => 20, 'max_chars' => 200 ),
+				'qa_structure'         => array( 'enabled' => true, 'weight' => 10, 'min_questions' => 3 ),
+				'definitions'          => array( 'enabled' => true, 'weight' => 10, 'min_definitions' => 2 ),
+				'paragraph_length'     => array( 'enabled' => true, 'weight' => 10, 'max_avg_words' => 100 ),
+				'list_optimization'    => array( 'enabled' => true, 'weight' => 8,  'min_lists' => 2 ),
+				'entity_density'       => array( 'enabled' => true, 'weight' => 5,  'min_density' => 2 ),
+				'citable_statistics'   => array( 'enabled' => true, 'weight' => 8,  'min_stats' => 3 ),
+				'semantic_completeness' => array( 'enabled' => true, 'weight' => 15, 'min_words' => 300, 'max_words' => 2000 ),
+				'snippet_optimization' => array( 'enabled' => true, 'weight' => 15, 'max_summary_words' => 60 ),
+				'freshness_signals'    => array( 'enabled' => true, 'weight' => 5,  'min_signals' => 2 ),
+			),
+		);
+	}
+
+	/**
+	 * Get resolved settings (DB merged with defaults).
+	 *
+	 * @return array
+	 */
+	private function get_settings() {
+		if ( null !== $this->settings ) {
+			return $this->settings;
+		}
+
+		$defaults = self::get_defaults();
+		$saved    = get_option( 'ai_seo_pilot_content_analysis', array() );
+		$settings = wp_parse_args( $saved, $defaults );
+
+		foreach ( $defaults['checks'] as $key => $def ) {
+			$settings['checks'][ $key ] = wp_parse_args(
+				isset( $settings['checks'][ $key ] ) ? $settings['checks'][ $key ] : array(),
+				$def
+			);
+		}
+
+		$this->settings = $settings;
+		return $settings;
+	}
+
+	/**
+	 * Get settings for a specific check.
+	 *
+	 * @param string $check_name Check key.
+	 * @return array
+	 */
+	private function check_settings( $check_name ) {
+		$settings = $this->get_settings();
+		return $settings['checks'][ $check_name ];
+	}
+
+	/* ── REST API ─────────────────────────────────────────────── */
 
 	/**
 	 * Register the /analyze endpoint.
@@ -64,52 +128,112 @@ class AI_SEO_Pilot_Content_Analyzer {
 		return rest_ensure_response( $this->analyze( $content, $title ) );
 	}
 
-	/* ── Public analysis method ───────────────────────────────────── */
+	/* ── Public analysis method ───────────────────────────────── */
 
 	/**
 	 * Analyze content and return a score with individual checks.
 	 *
 	 * @param string $content HTML content.
 	 * @param string $title   Post title.
-	 * @return array{score: int, ai_ready: bool, checks: array}
+	 * @return array{score: int, max_score: int, percentage: int, ai_ready: bool, checks: array}
 	 */
 	public function analyze( $content, $title ) {
-		$plain = wp_strip_all_tags( $content );
+		$plain    = wp_strip_all_tags( $content );
+		$settings = $this->get_settings();
 
-		$checks = array(
-			$this->check_direct_answer( $content, $plain ),
-			$this->check_qa_structure( $content ),
-			$this->check_definitions( $plain ),
-			$this->check_paragraph_length( $content ),
-			$this->check_list_optimization( $content ),
-			$this->check_entity_density( $plain ),
-			$this->check_citable_statistics( $plain ),
-			$this->check_semantic_completeness( $content, $plain ),
-			$this->check_snippet_optimization( $content ),
-			$this->check_freshness_signals( $plain ),
+		$all_checks = array(
+			'direct_answer'        => array( $this, 'check_direct_answer' ),
+			'qa_structure'         => array( $this, 'check_qa_structure' ),
+			'definitions'          => array( $this, 'check_definitions' ),
+			'paragraph_length'     => array( $this, 'check_paragraph_length' ),
+			'list_optimization'    => array( $this, 'check_list_optimization' ),
+			'entity_density'       => array( $this, 'check_entity_density' ),
+			'citable_statistics'   => array( $this, 'check_citable_statistics' ),
+			'semantic_completeness' => array( $this, 'check_semantic_completeness' ),
+			'snippet_optimization' => array( $this, 'check_snippet_optimization' ),
+			'freshness_signals'    => array( $this, 'check_freshness_signals' ),
 		);
 
-		$score = 0;
-		foreach ( $checks as &$check ) {
-			$score += $check['score'];
-			if ( $check['score'] >= 7 ) {
+		$checks    = array();
+		$score     = 0;
+		$max_score = 0;
+
+		foreach ( $all_checks as $name => $callback ) {
+			$check_cfg = $settings['checks'][ $name ];
+
+			if ( empty( $check_cfg['enabled'] ) ) {
+				continue;
+			}
+
+			$weight = (int) $check_cfg['weight'];
+			if ( 0 === $weight ) {
+				continue;
+			}
+
+			// Run check — each returns normalized 0-10, we scale to weight.
+			$check = $this->run_check( $callback, $name, $content, $plain );
+
+			// Scale score from 0-10 to 0-weight.
+			$scaled_score = round( ( $check['score'] / 10 ) * $weight );
+			$check['score'] = $scaled_score;
+			$check['max']   = $weight;
+
+			if ( $check['score'] >= $weight * 0.7 ) {
 				$check['status'] = 'good';
-			} elseif ( $check['score'] >= 4 ) {
+			} elseif ( $check['score'] >= $weight * 0.4 ) {
 				$check['status'] = 'warning';
 			} else {
 				$check['status'] = 'poor';
 			}
+
+			$score     += $check['score'];
+			$max_score += $weight;
+			$checks[]   = $check;
 		}
-		unset( $check );
+
+		$percentage = $max_score > 0 ? round( ( $score / $max_score ) * 100 ) : 0;
+		$threshold  = (int) $settings['ai_ready_threshold'];
 
 		return array(
-			'score'    => $score,
-			'ai_ready' => ( $score >= 75 ),
-			'checks'   => $checks,
+			'score'      => $score,
+			'max_score'  => $max_score,
+			'percentage' => $percentage,
+			'ai_ready'   => ( $percentage >= $threshold ),
+			'checks'     => $checks,
 		);
 	}
 
-	/* ── Gutenberg integration ────────────────────────────────────── */
+	/**
+	 * Run a single check with the right arguments.
+	 *
+	 * @param callable $callback Check method.
+	 * @param string   $name     Check key.
+	 * @param string   $content  HTML content.
+	 * @param string   $plain    Plain text content.
+	 * @return array
+	 */
+	private function run_check( $callback, $name, $content, $plain ) {
+		switch ( $name ) {
+			case 'direct_answer':
+				return call_user_func( $callback, $content, $plain );
+			case 'qa_structure':
+			case 'paragraph_length':
+			case 'list_optimization':
+			case 'snippet_optimization':
+				return call_user_func( $callback, $content );
+			case 'definitions':
+			case 'entity_density':
+			case 'citable_statistics':
+			case 'freshness_signals':
+				return call_user_func( $callback, $plain );
+			case 'semantic_completeness':
+				return call_user_func( $callback, $content, $plain );
+			default:
+				return array( 'name' => $name, 'label' => $name, 'score' => 0, 'max' => 10, 'suggestion' => '' );
+		}
+	}
+
+	/* ── Gutenberg integration ────────────────────────────────── */
 
 	/**
 	 * Enqueue the analyzer script in the block editor.
@@ -140,7 +264,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 		) );
 	}
 
-	/* ── Individual checks (each returns array with name, label, score, max, suggestion) */
+	/* ── Individual checks (each returns array with name, label, score 0-10, max 10, suggestion) */
 
 	/**
 	 * Check 1: Direct Answer — first paragraph answers a question directly.
@@ -150,6 +274,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_direct_answer( $content, $plain ) {
+		$cfg    = $this->check_settings( 'direct_answer' );
+		$target = (int) $cfg['max_chars'];
+
 		$result = array(
 			'name'       => 'direct_answer',
 			'label'      => 'Direct Answer',
@@ -177,22 +304,23 @@ class AI_SEO_Pilot_Content_Analyzer {
 
 		$len = mb_strlen( $first_para );
 
-		// Declarative statement under 300 characters.
+		// Declarative statement within configured limit.
+		$hard_limit     = (int) round( $target * 1.5 );
 		$is_declarative = (
-			$len <= 300
+			$len <= $hard_limit
 			&& ! str_ends_with( trim( $first_para ), '?' )
 			&& $len >= 20
 		);
 
-		if ( $is_declarative && $len <= 200 ) {
+		if ( $is_declarative && $len <= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Your opening paragraph provides a clear direct answer.';
 		} elseif ( $is_declarative ) {
 			$result['score']      = 8;
-			$result['suggestion'] = 'Good direct answer. Consider making it slightly more concise.';
+			$result['suggestion'] = sprintf( 'Good direct answer. Consider making it under %d characters for best results.', $target );
 		} else {
 			$result['score']      = 3;
-			$result['suggestion'] = 'Start with a concise declarative statement (under 300 characters) that directly answers the main question.';
+			$result['suggestion'] = sprintf( 'Start with a concise declarative statement (under %d characters) that directly answers the main question.', $hard_limit );
 		}
 
 		return $result;
@@ -205,6 +333,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_qa_structure( $content ) {
+		$cfg    = $this->check_settings( 'qa_structure' );
+		$target = (int) $cfg['min_questions'];
+
 		$result = array(
 			'name'       => 'qa_structure',
 			'label'      => 'Q&A Structure',
@@ -216,15 +347,15 @@ class AI_SEO_Pilot_Content_Analyzer {
 		preg_match_all( '/<h[23][^>]*>.*?\?<\/h[23]>/is', $content, $matches );
 		$count = count( $matches[0] );
 
-		if ( $count >= 3 ) {
+		if ( $count >= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Excellent Q&A structure with ' . $count . ' question headings.';
-		} elseif ( 2 === $count ) {
+		} elseif ( $count >= max( 1, $target - 1 ) ) {
 			$result['score']      = 6;
-			$result['suggestion'] = 'Good start. Add one more question heading (H2/H3 ending with ?) to maximize score.';
-		} elseif ( 1 === $count ) {
+			$result['suggestion'] = sprintf( 'Good start. Add %d more question heading(s) (H2/H3 ending with ?) to reach %d.', $target - $count, $target );
+		} elseif ( $count >= 1 ) {
 			$result['score']      = 3;
-			$result['suggestion'] = 'Only 1 question heading found. Use H2/H3 headings phrased as questions to improve AI snippet extraction.';
+			$result['suggestion'] = sprintf( 'Only %d question heading found. Use H2/H3 headings phrased as questions (target: %d).', $count, $target );
 		} else {
 			$result['suggestion'] = 'No question headings found. Add H2 or H3 headings that end with "?" to create Q&A structure.';
 		}
@@ -239,6 +370,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_definitions( $plain ) {
+		$cfg    = $this->check_settings( 'definitions' );
+		$target = (int) $cfg['min_definitions'];
+
 		$result = array(
 			'name'       => 'definitions',
 			'label'      => 'Definitions',
@@ -260,12 +394,12 @@ class AI_SEO_Pilot_Content_Analyzer {
 			$count += preg_match_all( $pattern, $plain );
 		}
 
-		if ( $count >= 2 ) {
+		if ( $count >= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Content includes ' . $count . ' definition patterns. AI models can extract clear definitions.';
-		} elseif ( 1 === $count ) {
+		} elseif ( $count >= 1 ) {
 			$result['score']      = 5;
-			$result['suggestion'] = 'Only 1 definition found. Add more "X is a...", "refers to", or "defined as" patterns.';
+			$result['suggestion'] = sprintf( 'Only %d definition found (target: %d). Add more "X is a...", "refers to", or "defined as" patterns.', $count, $target );
 		} else {
 			$result['suggestion'] = 'No definition patterns detected. Include explicit definitions using "X is...", "refers to...", or "defined as".';
 		}
@@ -274,12 +408,16 @@ class AI_SEO_Pilot_Content_Analyzer {
 	}
 
 	/**
-	 * Check 4: Paragraph Length — average paragraph length under 150 words.
+	 * Check 4: Paragraph Length — average paragraph length under configured words.
 	 *
 	 * @param string $content HTML content.
 	 * @return array
 	 */
 	private function check_paragraph_length( $content ) {
+		$cfg        = $this->check_settings( 'paragraph_length' );
+		$max_avg    = (int) $cfg['max_avg_words'];
+		$warn_limit = (int) round( $max_avg * 1.5 );
+
 		$result = array(
 			'name'       => 'paragraph_length',
 			'label'      => 'Paragraph Length',
@@ -306,17 +444,17 @@ class AI_SEO_Pilot_Content_Analyzer {
 
 		$avg = $para_count > 0 ? $total_words / $para_count : 0;
 
-		if ( $avg <= 100 ) {
+		if ( $avg <= $max_avg ) {
 			$result['score']      = 10;
-			$result['suggestion'] = 'Excellent paragraph length (avg ' . round( $avg ) . ' words). Short paragraphs are ideal for AI extraction.';
-		} elseif ( $avg <= 150 ) {
+			$result['suggestion'] = sprintf( 'Excellent paragraph length (avg %d words). Short paragraphs are ideal for AI extraction.', round( $avg ) );
+		} elseif ( $avg <= $warn_limit ) {
 			$result['score']      = 7;
-			$result['suggestion'] = 'Good paragraph length (avg ' . round( $avg ) . ' words). Consider breaking longer paragraphs for better readability.';
-		} elseif ( $avg <= 300 ) {
+			$result['suggestion'] = sprintf( 'Good paragraph length (avg %d words). Consider breaking longer paragraphs for better readability.', round( $avg ) );
+		} elseif ( $avg <= $warn_limit * 2 ) {
 			$result['score']      = 4;
-			$result['suggestion'] = 'Paragraphs are too long (avg ' . round( $avg ) . ' words). Aim for under 150 words per paragraph.';
+			$result['suggestion'] = sprintf( 'Paragraphs are too long (avg %d words). Aim for under %d words per paragraph.', round( $avg ), $warn_limit );
 		} else {
-			$result['suggestion'] = 'Paragraphs are very long (avg ' . round( $avg ) . ' words). Break them into shorter, focused paragraphs under 100 words.';
+			$result['suggestion'] = sprintf( 'Paragraphs are very long (avg %d words). Break them into shorter, focused paragraphs under %d words.', round( $avg ), $max_avg );
 		}
 
 		return $result;
@@ -329,6 +467,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_list_optimization( $content ) {
+		$cfg    = $this->check_settings( 'list_optimization' );
+		$target = (int) $cfg['min_lists'];
+
 		$result = array(
 			'name'       => 'list_optimization',
 			'label'      => 'List Optimization',
@@ -342,12 +483,12 @@ class AI_SEO_Pilot_Content_Analyzer {
 		$count += preg_match_all( '/<ol[\s>]/i', $content );
 		$count += preg_match_all( '/<table[\s>]/i', $content );
 
-		if ( $count >= 2 ) {
+		if ( $count >= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Content uses ' . $count . ' structured lists/tables. AI models favor structured data.';
-		} elseif ( 1 === $count ) {
+		} elseif ( $count >= 1 ) {
 			$result['score']      = 5;
-			$result['suggestion'] = 'One list or table found. Add another to improve structured data extraction.';
+			$result['suggestion'] = sprintf( '%d list or table found (target: %d). Add another to improve structured data extraction.', $count, $target );
 		} else {
 			$result['suggestion'] = 'No lists or tables found. Add <ul>, <ol>, or <table> elements to help AI extract structured information.';
 		}
@@ -362,6 +503,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_entity_density( $plain ) {
+		$cfg         = $this->check_settings( 'entity_density' );
+		$min_density = (float) $cfg['min_density'];
+
 		$result = array(
 			'name'       => 'entity_density',
 			'label'      => 'Entity Density',
@@ -377,8 +521,6 @@ class AI_SEO_Pilot_Content_Analyzer {
 		}
 
 		// Match capitalized multi-word phrases (proper nouns / entities).
-		// Exclude words at the start of sentences by requiring non-period/newline before.
-		preg_match_all( '/(?<=[.!?]\s|^)\s*/m', $plain ); // just to count sentences
 		preg_match_all( '/[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/', $plain, $matches );
 		$entity_count = count( $matches[0] );
 
@@ -386,12 +528,13 @@ class AI_SEO_Pilot_Content_Analyzer {
 		preg_match_all( '/\b[A-Z]{2,}\b/', $plain, $acronyms );
 		$entity_count += count( $acronyms[0] );
 
-		$per_100 = ( $entity_count / $word_count ) * 100;
+		$per_100     = ( $entity_count / $word_count ) * 100;
+		$half_target = $min_density / 2;
 
-		if ( $per_100 >= 2 ) {
+		if ( $per_100 >= $min_density ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Good entity density (' . $entity_count . ' entities detected). Content references specific entities AI can identify.';
-		} elseif ( $per_100 >= 1 ) {
+		} elseif ( $per_100 >= $half_target ) {
 			$result['score']      = 5;
 			$result['suggestion'] = 'Moderate entity density. Add more specific names, brands, or technical terms.';
 		} else {
@@ -408,6 +551,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_citable_statistics( $plain ) {
+		$cfg    = $this->check_settings( 'citable_statistics' );
+		$target = (int) $cfg['min_stats'];
+
 		$result = array(
 			'name'       => 'citable_statistics',
 			'label'      => 'Citable Statistics',
@@ -429,15 +575,15 @@ class AI_SEO_Pilot_Content_Analyzer {
 			$count += preg_match_all( $pattern, $plain );
 		}
 
-		if ( $count >= 3 ) {
+		if ( $count >= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Excellent! ' . $count . ' citable statistics found. AI models prioritize content with specific data points.';
-		} elseif ( 2 === $count ) {
+		} elseif ( $count >= max( 1, $target - 1 ) ) {
 			$result['score']      = 7;
-			$result['suggestion'] = 'Good — 2 statistics found. Add one more data point (percentage, dollar amount, or specific figure).';
-		} elseif ( 1 === $count ) {
+			$result['suggestion'] = sprintf( 'Good — %d statistics found (target: %d). Add one more data point.', $count, $target );
+		} elseif ( $count >= 1 ) {
 			$result['score']      = 4;
-			$result['suggestion'] = 'Only 1 statistic found. Include more percentages, dollar amounts, or specific numbers with context.';
+			$result['suggestion'] = sprintf( 'Only %d statistic found. Include more percentages, dollar amounts, or specific numbers with context.', $count );
 		} else {
 			$result['suggestion'] = 'No citable statistics found. Add specific numbers, percentages, or data points that AI can reference.';
 		}
@@ -453,6 +599,10 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_semantic_completeness( $content, $plain ) {
+		$cfg       = $this->check_settings( 'semantic_completeness' );
+		$min_words = (int) $cfg['min_words'];
+		$max_words = isset( $cfg['max_words'] ) ? (int) $cfg['max_words'] : 2000;
+
 		$result = array(
 			'name'       => 'semantic_completeness',
 			'label'      => 'Semantic Completeness',
@@ -465,14 +615,14 @@ class AI_SEO_Pilot_Content_Analyzer {
 		$issues     = array();
 		$sub_score  = 0;
 
-		// Word count (300-2000 optimal).
-		if ( $word_count >= 300 && $word_count <= 2000 ) {
+		// Word count.
+		if ( $word_count >= $min_words && $word_count <= $max_words ) {
 			$sub_score += 4;
-		} elseif ( $word_count > 2000 ) {
+		} elseif ( $word_count > $max_words ) {
 			$sub_score += 2;
-			$issues[]   = 'Content is quite long (' . $word_count . ' words) — consider trimming to under 2000 words';
+			$issues[]   = sprintf( 'Content is quite long (%d words) — consider trimming to under %d words', $word_count, $max_words );
 		} else {
-			$issues[] = 'Content is short (' . $word_count . ' words) — aim for at least 300 words';
+			$issues[] = sprintf( 'Content is short (%d words) — aim for at least %d words', $word_count, $min_words );
 		}
 
 		// Has intro (first paragraph exists).
@@ -521,6 +671,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_snippet_optimization( $content ) {
+		$cfg              = $this->check_settings( 'snippet_optimization' );
+		$max_summary_words = (int) $cfg['max_summary_words'];
+
 		$result = array(
 			'name'       => 'snippet_optimization',
 			'label'      => 'Snippet Optimization',
@@ -532,7 +685,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 		$issues    = array();
 		$sub_score = 0;
 
-		// Check for a concise summary paragraph (under 60 words) in the first 3 paragraphs.
+		// Check for a concise summary paragraph in the first 3 paragraphs.
 		preg_match_all( '/<p[^>]*>(.*?)<\/p>/is', $content, $paragraphs );
 		$has_concise = false;
 		$check_count = min( 3, count( $paragraphs[1] ) );
@@ -540,7 +693,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 		for ( $i = 0; $i < $check_count; $i++ ) {
 			$text  = wp_strip_all_tags( $paragraphs[1][ $i ] );
 			$words = str_word_count( $text );
-			if ( $words > 0 && $words <= 60 ) {
+			if ( $words > 0 && $words <= $max_summary_words ) {
 				$has_concise = true;
 				break;
 			}
@@ -549,7 +702,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 		if ( $has_concise ) {
 			$sub_score += 5;
 		} else {
-			$issues[] = 'Add a concise summary paragraph (under 60 words) within the first 3 paragraphs';
+			$issues[] = sprintf( 'Add a concise summary paragraph (under %d words) within the first 3 paragraphs', $max_summary_words );
 		}
 
 		// Check for bold/strong tags.
@@ -577,6 +730,9 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @return array
 	 */
 	private function check_freshness_signals( $plain ) {
+		$cfg    = $this->check_settings( 'freshness_signals' );
+		$target = (int) $cfg['min_signals'];
+
 		$result = array(
 			'name'       => 'freshness_signals',
 			'label'      => 'Freshness Signals',
@@ -600,12 +756,12 @@ class AI_SEO_Pilot_Content_Analyzer {
 			$count += preg_match_all( $pattern, $plain );
 		}
 
-		if ( $count >= 2 ) {
+		if ( $count >= $target ) {
 			$result['score']      = 10;
 			$result['suggestion'] = 'Strong freshness signals (' . $count . ' references). AI models favor up-to-date content.';
-		} elseif ( 1 === $count ) {
+		} elseif ( $count >= 1 ) {
 			$result['score']      = 5;
-			$result['suggestion'] = 'One freshness signal found. Add more date references or words like "updated", "latest", "current".';
+			$result['suggestion'] = sprintf( '%d freshness signal found (target: %d). Add more date references or words like "updated", "latest", "current".', $count, $target );
 		} else {
 			$result['suggestion'] = 'No freshness signals detected. Include year references (e.g., 2026), "updated", "latest", or "as of" to signal recency.';
 		}

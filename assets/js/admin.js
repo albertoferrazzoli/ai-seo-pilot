@@ -469,4 +469,63 @@
 		});
 	}
 
+	/* ── Custom Bots Management ───────────────────────────── */
+
+	$('#ai-seo-pilot-add-bot').on('click', function () {
+		var id      = $.trim($('#ai-seo-pilot-new-bot-id').val());
+		var name    = $.trim($('#ai-seo-pilot-new-bot-name').val()) || id;
+		var service = $.trim($('#ai-seo-pilot-new-bot-service').val());
+
+		if (!id) {
+			$('#ai-seo-pilot-new-bot-id').focus();
+			return;
+		}
+
+		// Prevent duplicates.
+		var exists = false;
+		$('#ai-seo-pilot-bots-table tbody tr td:first-child code').each(function () {
+			if ($(this).text() === id) { exists = true; }
+		});
+		if (exists) {
+			alert('Bot "' + id + '" already exists.');
+			return;
+		}
+
+		var idx = $('#ai-seo-pilot-custom-bots-inputs .ai-seo-pilot-custom-bot-row').length;
+
+		// Add table row.
+		var safeId = $('<span>').text(id).html();
+		$('#ai-seo-pilot-bots-table tbody').append(
+			'<tr>' +
+				'<td><code>' + safeId + '</code></td>' +
+				'<td>' + $('<span>').text(name).html() + '</td>' +
+				'<td>' + $('<span>').text(service).html() + '</td>' +
+				'<td><button type="button" class="button-link ai-seo-pilot-custom-badge" ' +
+					'style="color:#d63638;padding:2px 6px" ' +
+					'data-identifier="' + safeId + '" ' +
+					'onclick="this.closest(\'tr\').remove();' +
+					'document.querySelector(\'.ai-seo-pilot-custom-bot-row[data-identifier=\\x22' + id.replace(/"/g, '') + '\\x22]\')?.remove();">Remove</button></td>' +
+			'</tr>'
+		);
+
+		// Add hidden inputs.
+		$('#ai-seo-pilot-custom-bots-inputs').append(
+			'<div class="ai-seo-pilot-custom-bot-row" data-identifier="' + $('<span>').text(id).html() + '">' +
+				'<input type="hidden" name="ai_seo_pilot_custom_bots[' + idx + '][identifier]" value="' + $('<span>').text(id).html() + '">' +
+				'<input type="hidden" name="ai_seo_pilot_custom_bots[' + idx + '][name]" value="' + $('<span>').text(name).html() + '">' +
+				'<input type="hidden" name="ai_seo_pilot_custom_bots[' + idx + '][service]" value="' + $('<span>').text(service).html() + '">' +
+			'</div>'
+		);
+
+		// Clear inputs.
+		$('#ai-seo-pilot-new-bot-id, #ai-seo-pilot-new-bot-name, #ai-seo-pilot-new-bot-service').val('');
+		$('#ai-seo-pilot-new-bot-id').focus();
+	});
+
+	// Remove custom bot: also remove its hidden inputs.
+	$(document).on('click', '.ai-seo-pilot-custom-badge', function () {
+		var identifier = $(this).data('identifier');
+		$('.ai-seo-pilot-custom-bot-row[data-identifier="' + identifier + '"]').remove();
+	});
+
 })(jQuery);

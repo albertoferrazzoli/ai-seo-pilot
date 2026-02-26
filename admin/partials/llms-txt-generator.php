@@ -37,7 +37,7 @@ $ai_configured = $plugin->ai_engine->is_configured();
 					<?php esc_html_e( 'Generate with AI', 'ai-seo-pilot' ); ?>
 				</button>
 			<?php else : ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-settings#ai-api' ) ); ?>" class="button" title="<?php esc_attr_e( 'Configure API key first', 'ai-seo-pilot' ); ?>">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-settings#ai-providers' ) ); ?>" class="button" title="<?php esc_attr_e( 'Configure API key first', 'ai-seo-pilot' ); ?>">
 					<?php esc_html_e( 'Generate with AI', 'ai-seo-pilot' ); ?>
 				</a>
 			<?php endif; ?>

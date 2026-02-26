@@ -134,7 +134,7 @@ $sitemap_enabled = get_option( 'ai_seo_pilot_sitemap_ai_enabled', 'yes' );
 			<li class="<?php echo 'yes' === $schema_enabled ? 'done' : ''; ?>">
 				<span class="dashicons dashicons-yes-alt"></span>
 				<?php esc_html_e( 'Enable Schema.org JSON-LD', 'ai-seo-pilot' ); ?>
-				— <a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-settings' ) ); ?>"><?php esc_html_e( 'Settings', 'ai-seo-pilot' ); ?></a>
+				— <a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-settings#general' ) ); ?>"><?php esc_html_e( 'Settings', 'ai-seo-pilot' ); ?></a>
 			</li>
 			<li class="<?php echo 'yes' === $sitemap_enabled ? 'done' : ''; ?>">
 				<span class="dashicons dashicons-yes-alt"></span>

@@ -37,6 +37,11 @@ class AI_SEO_Pilot_SEO_Checker {
 			$this->check_content_readiness(),
 			$this->check_image_alt_tags(),
 			$this->check_heading_structure(),
+			$this->check_content_quality_scan(),
+			$this->check_thin_content(),
+			$this->check_focus_keywords(),
+			$this->check_keyword_cannibalization(),
+			$this->check_internal_linking(),
 		);
 
 		$passed   = 0;
@@ -517,6 +522,326 @@ class AI_SEO_Pilot_SEO_Checker {
 				count( $recent_posts )
 			),
 			'fix'        => 'pass' !== $status ? __( 'Add H2-H6 sub-headings to break up content into logical sections.', 'ai-seo-pilot' ) : '',
+			'fix_action' => null,
+		);
+	}
+
+	/* ── Content Optimization ──────────────────────────────────── */
+
+	private function check_content_quality_scan() {
+		if ( 'yes' !== get_option( 'ai_seo_pilot_content_quality_enabled', 'yes' ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Content Quality Scan', 'ai-seo-pilot' ),
+				'severity'   => 'info',
+				'status'     => 'warning',
+				'message'    => __( 'Content Quality module is disabled.', 'ai-seo-pilot' ),
+				'fix'        => __( 'Enable it in Settings > Content Optimization.', 'ai-seo-pilot' ),
+				'fix_action' => array(
+					'type'   => 'option_toggle',
+					'option' => 'ai_seo_pilot_content_quality_enabled',
+					'value'  => 'yes',
+					'label'  => __( 'Enable', 'ai-seo-pilot' ),
+				),
+			);
+		}
+
+		$plugin  = AI_SEO_Pilot::get_instance();
+		$scanned = $plugin->content_quality->get_scanned_posts();
+		$count   = count( $scanned );
+
+		$total_posts = wp_count_posts( 'post' );
+		$total_pages = wp_count_posts( 'page' );
+		$total       = ( $total_posts->publish ?? 0 ) + ( $total_pages->publish ?? 0 );
+		$pct         = $total > 0 ? round( $count / $total * 100 ) : 0;
+
+		if ( $pct >= 80 ) {
+			$status = 'pass';
+		} elseif ( $count > 0 ) {
+			$status = 'warning';
+		} else {
+			$status = 'fail';
+		}
+
+		return array(
+			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+			'label'      => __( 'Content Quality Scan', 'ai-seo-pilot' ),
+			'severity'   => 'medium',
+			'status'     => $status,
+			'message'    => sprintf(
+				/* translators: %1$d: scanned, %2$d: total, %3$d: percentage */
+				__( '%1$d / %2$d posts scanned for quality (%3$d%%). Scan all content to identify weak spots.', 'ai-seo-pilot' ),
+				$count,
+				$total,
+				$pct
+			),
+			'fix'        => 'pass' !== $status ? __( 'Run a full Content Quality scan to analyze all posts.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'  => 'link',
+				'url'   => admin_url( 'admin.php?page=ai-seo-pilot-content-quality' ),
+				'label' => __( 'Scan Now', 'ai-seo-pilot' ),
+			) : null,
+		);
+	}
+
+	private function check_thin_content() {
+		if ( 'yes' !== get_option( 'ai_seo_pilot_content_quality_enabled', 'yes' ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Thin Content Detection', 'ai-seo-pilot' ),
+				'severity'   => 'info',
+				'status'     => 'warning',
+				'message'    => __( 'Content Quality module is disabled. Enable it to detect thin content.', 'ai-seo-pilot' ),
+				'fix'        => '',
+				'fix_action' => null,
+			);
+		}
+
+		$plugin  = AI_SEO_Pilot::get_instance();
+		$scanned = $plugin->content_quality->get_scanned_posts();
+
+		if ( empty( $scanned ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Thin Content Detection', 'ai-seo-pilot' ),
+				'severity'   => 'high',
+				'status'     => 'warning',
+				'message'    => __( 'No content scanned yet. Run a quality scan first.', 'ai-seo-pilot' ),
+				'fix'        => '',
+				'fix_action' => array(
+					'type'  => 'link',
+					'url'   => admin_url( 'admin.php?page=ai-seo-pilot-content-quality' ),
+					'label' => __( 'Scan Now', 'ai-seo-pilot' ),
+				),
+			);
+		}
+
+		$thin          = 0;
+		$content_count = 0;
+		foreach ( $scanned as $sp ) {
+			if ( $plugin->content_quality->is_utility_page( $sp->post_id ) ) {
+				continue; // Skip utility/functional pages.
+			}
+			$content_count++;
+			if ( (float) $sp->quality_score < 40 ) {
+				$thin++;
+			}
+		}
+
+		$pct    = $content_count > 0 ? round( $thin / $content_count * 100 ) : 0;
+		$status = 0 === $thin ? 'pass' : ( $pct <= 20 ? 'warning' : 'fail' );
+
+		return array(
+			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+			'label'      => __( 'Thin Content Detection', 'ai-seo-pilot' ),
+			'severity'   => 'high',
+			'status'     => $status,
+			'message'    => 0 === $thin
+				? __( 'No thin content detected. All scanned content posts have adequate quality (utility pages excluded).', 'ai-seo-pilot' )
+				: sprintf(
+					/* translators: %1$d: thin count, %2$d: total scanned */
+					__( '%1$d of %2$d content posts are flagged as thin (quality < 40, utility pages excluded). Thin content may be ignored by AI engines.', 'ai-seo-pilot' ),
+					$thin,
+					$content_count
+				),
+			'fix'        => 'pass' !== $status ? __( 'Review thin content in the Content Quality page and improve or consolidate weak posts.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'  => 'link',
+				'url'   => admin_url( 'admin.php?page=ai-seo-pilot-content-quality' ),
+				'label' => __( 'View Content Quality', 'ai-seo-pilot' ),
+			) : null,
+		);
+	}
+
+	private function check_focus_keywords() {
+		if ( 'yes' !== get_option( 'ai_seo_pilot_keyword_tracker_enabled', 'yes' ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Focus Keywords', 'ai-seo-pilot' ),
+				'severity'   => 'info',
+				'status'     => 'warning',
+				'message'    => __( 'Keyword Tracker is disabled.', 'ai-seo-pilot' ),
+				'fix'        => __( 'Enable it in Settings > Content Optimization.', 'ai-seo-pilot' ),
+				'fix_action' => array(
+					'type'   => 'option_toggle',
+					'option' => 'ai_seo_pilot_keyword_tracker_enabled',
+					'value'  => 'yes',
+					'label'  => __( 'Enable', 'ai-seo-pilot' ),
+				),
+			);
+		}
+
+		global $wpdb;
+
+		$total_posts = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('post','page') AND post_status = 'publish'"
+		);
+
+		$with_kw = (int) $wpdb->get_var(
+			"SELECT COUNT(DISTINCT p.ID)
+			FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+			WHERE p.post_type IN ('post','page')
+			AND p.post_status = 'publish'
+			AND pm.meta_key = '_ai_seo_pilot_focus_keyword'
+			AND pm.meta_value != ''"
+		);
+
+		$pct = $total_posts > 0 ? round( $with_kw / $total_posts * 100 ) : 0;
+
+		if ( $pct >= 70 ) {
+			$status = 'pass';
+		} elseif ( $with_kw > 0 ) {
+			$status = 'warning';
+		} else {
+			$status = 'fail';
+		}
+
+		return array(
+			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+			'label'      => __( 'Focus Keywords', 'ai-seo-pilot' ),
+			'severity'   => 'high',
+			'status'     => $status,
+			'message'    => sprintf(
+				/* translators: %1$d: with keywords, %2$d: total, %3$d: percentage */
+				__( '%1$d / %2$d posts have a focus keyword (%3$d%%). Focus keywords help AI engines understand your topic targeting.', 'ai-seo-pilot' ),
+				$with_kw,
+				$total_posts,
+				$pct
+			),
+			'fix'        => 'pass' !== $status ? __( 'Set focus keywords in the post editor or use "Extract with AI" to auto-detect them.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'  => 'link',
+				'url'   => admin_url( 'admin.php?page=ai-seo-pilot-keywords' ),
+				'label' => __( 'View Keywords', 'ai-seo-pilot' ),
+			) : null,
+		);
+	}
+
+	private function check_keyword_cannibalization() {
+		if ( 'yes' !== get_option( 'ai_seo_pilot_keyword_tracker_enabled', 'yes' ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Keyword Cannibalization', 'ai-seo-pilot' ),
+				'severity'   => 'info',
+				'status'     => 'warning',
+				'message'    => __( 'Keyword Tracker is disabled.', 'ai-seo-pilot' ),
+				'fix'        => '',
+				'fix_action' => null,
+			);
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$groups = $plugin->keyword_tracker->get_keyword_groups();
+
+		$conflicts = 0;
+		foreach ( $groups as $kw => $posts ) {
+			if ( count( $posts ) > 1 ) {
+				$conflicts++;
+			}
+		}
+
+		if ( empty( $groups ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Keyword Cannibalization', 'ai-seo-pilot' ),
+				'severity'   => 'medium',
+				'status'     => 'warning',
+				'message'    => __( 'No focus keywords found. Add focus keywords to posts before checking for cannibalization.', 'ai-seo-pilot' ),
+				'fix'        => '',
+				'fix_action' => null,
+			);
+		}
+
+		$status = 0 === $conflicts ? 'pass' : ( $conflicts <= 2 ? 'warning' : 'fail' );
+
+		return array(
+			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+			'label'      => __( 'Keyword Cannibalization', 'ai-seo-pilot' ),
+			'severity'   => 'high',
+			'status'     => $status,
+			'message'    => 0 === $conflicts
+				? __( 'No keyword cannibalization detected. Each focus keyword targets a unique page.', 'ai-seo-pilot' )
+				: sprintf(
+					/* translators: %d: number of conflicting keyword groups */
+					__( '%d keyword(s) are targeted by multiple posts. This confuses AI engines about which page to cite.', 'ai-seo-pilot' ),
+					$conflicts
+				),
+			'fix'        => 'pass' !== $status ? __( 'Review conflicting keywords and differentiate or consolidate competing posts.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'  => 'link',
+				'url'   => admin_url( 'admin.php?page=ai-seo-pilot-keywords' ),
+				'label' => __( 'View Keywords', 'ai-seo-pilot' ),
+			) : null,
+		);
+	}
+
+	private function check_internal_linking() {
+		if ( 'yes' !== get_option( 'ai_seo_pilot_internal_linking_enabled', 'yes' ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Internal Linking', 'ai-seo-pilot' ),
+				'severity'   => 'info',
+				'status'     => 'warning',
+				'message'    => __( 'Internal Linking module is disabled.', 'ai-seo-pilot' ),
+				'fix'        => __( 'Enable it in Settings > Content Optimization.', 'ai-seo-pilot' ),
+				'fix_action' => array(
+					'type'   => 'option_toggle',
+					'option' => 'ai_seo_pilot_internal_linking_enabled',
+					'value'  => 'yes',
+					'label'  => __( 'Enable', 'ai-seo-pilot' ),
+				),
+			);
+		}
+
+		$recent_posts = get_posts( array(
+			'post_type'      => 'post',
+			'post_status'    => 'publish',
+			'posts_per_page' => 15,
+		) );
+
+		if ( empty( $recent_posts ) ) {
+			return array(
+				'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+				'label'      => __( 'Internal Linking', 'ai-seo-pilot' ),
+				'severity'   => 'medium',
+				'status'     => 'warning',
+				'message'    => __( 'No published posts to analyze.', 'ai-seo-pilot' ),
+				'fix'        => '',
+				'fix_action' => null,
+			);
+		}
+
+		$site_url       = home_url();
+		$with_links     = 0;
+		$orphan_count   = 0;
+
+		foreach ( $recent_posts as $p ) {
+			// Check for internal links in content.
+			if ( preg_match( '/<a[^>]+href=["\']' . preg_quote( $site_url, '/' ) . '/i', $p->post_content ) ||
+				preg_match( '/<a[^>]+href=["\']\/[^"\']/i', $p->post_content ) ) {
+				$with_links++;
+			} else {
+				$orphan_count++;
+			}
+		}
+
+		$pct    = round( $with_links / count( $recent_posts ) * 100 );
+		$status = $pct >= 70 ? 'pass' : ( $pct >= 40 ? 'warning' : 'fail' );
+
+		return array(
+			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
+			'label'      => __( 'Internal Linking', 'ai-seo-pilot' ),
+			'severity'   => 'medium',
+			'status'     => $status,
+			'message'    => sprintf(
+				/* translators: %1$d: with links, %2$d: total, %3$d: orphans */
+				__( '%1$d / %2$d recent posts contain internal links. %3$d posts are orphaned (no internal links). Internal links help AI engines discover and rank related content.', 'ai-seo-pilot' ),
+				$with_links,
+				count( $recent_posts ),
+				$orphan_count
+			),
+			'fix'        => 'pass' !== $status ? __( 'Use "Find Links with AI" in the post editor to get AI-powered internal link suggestions.', 'ai-seo-pilot' ) : '',
 			'fix_action' => null,
 		);
 	}

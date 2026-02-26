@@ -44,6 +44,13 @@ class AI_SEO_Pilot_Activator {
 			'ai_seo_pilot_ai_deepseek_api_key'     => '',
 			'ai_seo_pilot_ai_deepseek_model'       => '',
 			'ai_seo_pilot_remove_data_on_uninstall' => 'no',
+			// Content Optimization AI defaults.
+			'ai_seo_pilot_content_optimizer_enabled' => 'yes',
+			'ai_seo_pilot_internal_linking_enabled'  => 'yes',
+			'ai_seo_pilot_keyword_tracker_enabled'   => 'yes',
+			'ai_seo_pilot_readability_enabled'       => 'yes',
+			'ai_seo_pilot_content_quality_enabled'   => 'yes',
+			'ai_seo_pilot_default_tone'              => 'authoritative',
 		);
 
 		foreach ( $defaults as $key => $value ) {

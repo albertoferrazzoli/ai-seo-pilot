@@ -84,18 +84,22 @@ foreach ( $checks as $check ) {
 		<!-- Stats Grid -->
 		<div class="aisp-stats">
 			<div class="aisp-stat aisp-stat-pass">
+				<span class="aisp-stat-icon dashicons dashicons-yes-alt"></span>
 				<span class="aisp-stat-num"><?php echo esc_html( $results['passed'] ); ?></span>
 				<span class="aisp-stat-label"><?php esc_html_e( 'Passed', 'ai-seo-pilot' ); ?></span>
 			</div>
 			<div class="aisp-stat aisp-stat-fail">
+				<span class="aisp-stat-icon dashicons dashicons-dismiss"></span>
 				<span class="aisp-stat-num"><?php echo esc_html( $results['failed'] ); ?></span>
 				<span class="aisp-stat-label"><?php esc_html_e( 'Failed', 'ai-seo-pilot' ); ?></span>
 			</div>
 			<div class="aisp-stat aisp-stat-warn">
+				<span class="aisp-stat-icon dashicons dashicons-warning"></span>
 				<span class="aisp-stat-num"><?php echo esc_html( $results['warnings'] ); ?></span>
 				<span class="aisp-stat-label"><?php esc_html_e( 'Warnings', 'ai-seo-pilot' ); ?></span>
 			</div>
 			<div class="aisp-stat aisp-stat-total">
+				<span class="aisp-stat-icon dashicons dashicons-list-view"></span>
 				<span class="aisp-stat-num"><?php echo esc_html( $results['total'] ); ?></span>
 				<span class="aisp-stat-label"><?php esc_html_e( 'Total Checks', 'ai-seo-pilot' ); ?></span>
 			</div>

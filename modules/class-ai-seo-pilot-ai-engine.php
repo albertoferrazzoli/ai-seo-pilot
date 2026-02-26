@@ -278,6 +278,316 @@ class AI_SEO_Pilot_AI_Engine {
 		return $this->call_api( $prompt, 300 );
 	}
 
+	/* ── Content Optimization AI ───────────────────────────────── */
+
+	/**
+	 * Analyze readability of a post using AI.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|WP_Error JSON readability report or error.
+	 */
+	public function analyze_readability( $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Analyze the readability of this content and return a structured JSON report.\n\n";
+		$prompt .= "Return a JSON object with these fields:\n";
+		$prompt .= "- \"score\": integer 0-100 (overall readability score, 100 = very easy to read)\n";
+		$prompt .= "- \"level\": one of \"elementary\", \"intermediate\", \"advanced\", \"academic\"\n";
+		$prompt .= "- \"avg_sentence_length\": integer (estimated average words per sentence)\n";
+		$prompt .= "- \"long_sentences\": array of objects {\"text\": \"the sentence...\", \"words\": 45, \"suggestion\": \"Split into...\"} (sentences over 25 words)\n";
+		$prompt .= "- \"passive_voice\": array of objects {\"text\": \"was written by...\", \"suggestion\": \"Write: The author wrote...\"} (passive constructions found)\n";
+		$prompt .= "- \"transition_score\": integer 0-100 (how well the text flows between ideas)\n";
+		$prompt .= "- \"heading_analysis\": object {\"structure\": \"good|needs_improvement|poor\", \"suggestion\": \"...\"}\n";
+		$prompt .= "- \"suggestions\": array of strings (3-5 actionable tips to improve readability)\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks, no explanations.\n\n";
+		$prompt .= "CONTENT TO ANALYZE:\n{$post_context}";
+
+		return $this->call_api( $prompt, 1500 );
+	}
+
+	/**
+	 * Analyze content quality of a post using AI.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|WP_Error JSON quality report or error.
+	 */
+	public function analyze_content_quality( $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Evaluate the overall quality of this content for SEO and user value. Return a structured JSON report.\n\n";
+		$prompt .= "Return a JSON object with these fields:\n";
+		$prompt .= "- \"quality_score\": integer 0-100 (overall quality)\n";
+		$prompt .= "- \"depth\": integer 0-100 (how deeply the topic is covered)\n";
+		$prompt .= "- \"originality\": integer 0-100 (uniqueness of perspective and insights)\n";
+		$prompt .= "- \"value\": integer 0-100 (practical value for the reader)\n";
+		$prompt .= "- \"completeness\": integer 0-100 (coverage of essential subtopics)\n";
+		$prompt .= "- \"is_thin\": boolean (true if content is superficial, lacks substance, or is too short to be useful)\n";
+		$prompt .= "- \"missing_topics\": array of strings (important subtopics that should be covered)\n";
+		$prompt .= "- \"strengths\": array of strings (what the content does well)\n";
+		$prompt .= "- \"suggestions\": array of objects {\"priority\": \"high|medium|low\", \"action\": \"description of improvement\"}\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks, no explanations.\n\n";
+		$prompt .= "CONTENT TO ANALYZE:\n{$post_context}";
+
+		return $this->call_api( $prompt, 1000 );
+	}
+
+	/**
+	 * Compare two posts for content similarity using AI.
+	 *
+	 * @param int $post_id_a First post ID.
+	 * @param int $post_id_b Second post ID.
+	 * @return string|WP_Error JSON similarity analysis or error.
+	 */
+	public function compare_content_similarity( $post_id_a, $post_id_b ) {
+		$context_a = $this->get_post_context( $post_id_a );
+		$context_b = $this->get_post_context( $post_id_b );
+
+		if ( empty( $context_a ) || empty( $context_b ) ) {
+			return new \WP_Error( 'no_post', __( 'One or both posts not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Compare these two pieces of content for thematic similarity and overlap.\n\n";
+		$prompt .= "Return a JSON object with:\n";
+		$prompt .= "- \"similarity_score\": integer 0-100 (0 = completely different, 100 = essentially the same content)\n";
+		$prompt .= "- \"overlap_areas\": array of strings (specific topics/sections that overlap)\n";
+		$prompt .= "- \"unique_to_a\": array of strings (topics only in content A)\n";
+		$prompt .= "- \"unique_to_b\": array of strings (topics only in content B)\n";
+		$prompt .= "- \"recommendation\": string (\"merge\", \"differentiate\", \"keep_both\", or \"consolidate\")\n";
+		$prompt .= "- \"explanation\": string (brief explanation of the recommendation)\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.\n\n";
+		$prompt .= "CONTENT A:\n{$context_a}\n\n---\n\nCONTENT B:\n{$context_b}";
+
+		return $this->call_api( $prompt, 800 );
+	}
+
+	/**
+	 * Extract focus keywords from a post using AI.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return string|WP_Error JSON array of keywords or error.
+	 */
+	public function extract_keywords( $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Extract the 3-5 most important focus keywords or key phrases from this content.\n\n";
+		$prompt .= "Return a JSON array of objects, each with:\n";
+		$prompt .= "- \"keyword\": string (the keyword or key phrase)\n";
+		$prompt .= "- \"relevance_score\": float 0-1 (how central this keyword is to the content)\n";
+		$prompt .= "- \"type\": one of \"primary\", \"secondary\", \"long_tail\"\n\n";
+		$prompt .= "Order by relevance (most relevant first). The first keyword should be the single best focus keyword.\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.\n\n";
+		$prompt .= "CONTENT:\n{$post_context}";
+
+		return $this->call_api( $prompt, 300 );
+	}
+
+	/**
+	 * Suggest related keywords and topics using AI.
+	 *
+	 * @param string $keyword Primary keyword.
+	 * @return string|WP_Error JSON array of related keywords or error.
+	 */
+	public function suggest_related_keywords( $keyword ) {
+		$site_context = $this->get_site_context_brief();
+
+		$prompt  = "Given the focus keyword \"{$keyword}\" for a page on {$site_context}, suggest 8-12 related keywords and topics.\n\n";
+		$prompt .= "Return a JSON array of objects, each with:\n";
+		$prompt .= "- \"keyword\": string\n";
+		$prompt .= "- \"type\": one of \"variation\", \"long_tail\", \"question\", \"related_topic\", \"semantic_sibling\"\n";
+		$prompt .= "- \"search_intent\": one of \"informational\", \"navigational\", \"transactional\", \"commercial\"\n\n";
+		$prompt .= "Include a mix of:\n";
+		$prompt .= "- Long-tail variations of the keyword\n";
+		$prompt .= "- Questions people ask about this topic\n";
+		$prompt .= "- Semantically related terms that AI engines associate with this topic\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.";
+
+		return $this->call_api( $prompt, 500 );
+	}
+
+	/**
+	 * Analyze keyword usage and density in a post using AI.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $keyword Focus keyword to analyze.
+	 * @return string|WP_Error JSON usage analysis or error.
+	 */
+	public function analyze_keyword_usage( $post_id, $keyword ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Analyze how the keyword \"{$keyword}\" is used in this content.\n\n";
+		$prompt .= "Return a JSON object with:\n";
+		$prompt .= "- \"density_percent\": float (estimated keyword density as percentage)\n";
+		$prompt .= "- \"occurrences\": integer (approximate number of times the keyword appears)\n";
+		$prompt .= "- \"in_title\": boolean\n";
+		$prompt .= "- \"in_headings\": boolean\n";
+		$prompt .= "- \"in_first_paragraph\": boolean\n";
+		$prompt .= "- \"in_conclusion\": boolean\n";
+		$prompt .= "- \"distribution\": one of \"well_distributed\", \"front_loaded\", \"back_loaded\", \"clustered\", \"sparse\"\n";
+		$prompt .= "- \"verdict\": one of \"optimal\", \"under_optimized\", \"over_optimized\"\n";
+		$prompt .= "- \"suggestions\": array of strings (2-4 tips to improve keyword usage)\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.\n\n";
+		$prompt .= "CONTENT:\n{$post_context}";
+
+		return $this->call_api( $prompt, 800 );
+	}
+
+	/**
+	 * Detect keyword cannibalization across posts using AI.
+	 *
+	 * @param string $keyword Focus keyword.
+	 * @param array  $posts   Array of ['id' => int, 'title' => string, 'url' => string, 'excerpt' => string].
+	 * @return string|WP_Error JSON cannibalization analysis or error.
+	 */
+	public function detect_cannibalization( $keyword, $posts ) {
+		$prompt  = "Analyze whether these posts are competing (cannibalizing) for the keyword \"{$keyword}\".\n\n";
+		$prompt .= "POSTS:\n";
+		foreach ( $posts as $p ) {
+			$prompt .= "- ID {$p['id']}: [{$p['title']}]({$p['url']})\n  {$p['excerpt']}\n";
+		}
+		$prompt .= "\nReturn a JSON object with:\n";
+		$prompt .= "- \"has_cannibalization\": boolean\n";
+		$prompt .= "- \"severity\": one of \"none\", \"low\", \"medium\", \"high\"\n";
+		$prompt .= "- \"conflicts\": array of objects {\"post_ids\": [id1, id2], \"reason\": \"why they conflict\"}\n";
+		$prompt .= "- \"recommendation\": string (what to do: merge, differentiate, add canonical, etc.)\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.";
+
+		return $this->call_api( $prompt, 1000 );
+	}
+
+	/**
+	 * Suggest internal links for a post using AI semantic matching.
+	 *
+	 * @param int   $post_id    Current post ID.
+	 * @param array $candidates Array of ['id' => int, 'title' => string, 'url' => string, 'excerpt' => string].
+	 * @return string|WP_Error JSON array of link suggestions or error.
+	 */
+	public function suggest_internal_links( $post_id, $candidates ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$prompt  = "Analyze this content and suggest which of the candidate pages should be linked from within it.\n\n";
+		$prompt .= "For each suggestion, provide the best anchor text and where in the content the link should be placed.\n\n";
+		$prompt .= "Return a JSON array of objects (max 5 suggestions), each with:\n";
+		$prompt .= "- \"target_id\": integer (the candidate post ID)\n";
+		$prompt .= "- \"url\": string (target URL)\n";
+		$prompt .= "- \"title\": string (target page title)\n";
+		$prompt .= "- \"anchor_text\": string (suggested anchor text, naturally fitting the content)\n";
+		$prompt .= "- \"reason\": string (why this link is relevant)\n";
+		$prompt .= "- \"context\": string (a short excerpt from the source content where the link should be inserted)\n\n";
+		$prompt .= "Only suggest links that are genuinely relevant. Quality over quantity.\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.\n\n";
+		$prompt .= "SOURCE CONTENT:\n{$post_context}\n\n";
+		$prompt .= "CANDIDATE PAGES:\n";
+		foreach ( $candidates as $c ) {
+			$prompt .= "- ID {$c['id']}: [{$c['title']}]({$c['url']}): {$c['excerpt']}\n";
+		}
+
+		return $this->call_api( $prompt, 800 );
+	}
+
+	/**
+	 * Rewrite a paragraph with specific instructions using AI.
+	 *
+	 * @param string $paragraph   Original paragraph HTML/text.
+	 * @param string $instruction Rewrite instruction (e.g., "make more concise", "add statistics").
+	 * @param int    $post_id     Post ID for context.
+	 * @return string|WP_Error Rewritten paragraph or error.
+	 */
+	public function rewrite_paragraph( $paragraph, $instruction, $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+
+		$prompt  = "Rewrite the following paragraph according to the instruction.\n\n";
+		$prompt .= "Instruction: {$instruction}\n\n";
+		$prompt .= "Original paragraph:\n{$paragraph}\n\n";
+		$prompt .= "Rules:\n";
+		$prompt .= "- Return ONLY the rewritten paragraph, no explanations or preamble\n";
+		$prompt .= "- Preserve the meaning and key facts\n";
+		$prompt .= "- Keep the same general length unless the instruction says otherwise\n";
+		$prompt .= "- Use HTML formatting if the original uses it\n\n";
+		if ( ! empty( $post_context ) ) {
+			$prompt .= "Context (the full article this paragraph belongs to):\n{$post_context}";
+		}
+
+		return $this->call_api( $prompt, 500 );
+	}
+
+	/**
+	 * Generate a content section (FAQ, statistics, definitions, etc.) using AI.
+	 *
+	 * @param string $section_type Section type: 'faq', 'statistics', 'definitions', 'summary', 'conclusion'.
+	 * @param int    $post_id      Post ID.
+	 * @return string|WP_Error Generated HTML section or error.
+	 */
+	public function generate_content_section( $section_type, $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+		if ( empty( $post_context ) ) {
+			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
+		}
+
+		$instructions = array(
+			'faq'         => "Generate a FAQ section with 4-6 questions and answers based on this content. Use <h3> for questions and <p> for answers. The questions should be what real users would ask about this topic.",
+			'statistics'  => "Generate a section with 3-5 relevant statistics and data points related to this topic. Use <ul> with <li> items. Include specific numbers and cite general sources (e.g., 'According to industry reports...'). Make them citable by AI engines.",
+			'definitions' => "Generate a glossary/definitions section with 3-5 key terms from this content. Use a <dl> (definition list) with <dt> for terms and <dd> for definitions. Definitions should be concise and authoritative.",
+			'summary'     => "Generate a concise executive summary of this content in 2-3 paragraphs. Use <p> tags. The summary should capture all key points and be self-contained — an AI engine should be able to cite it as a comprehensive overview.",
+			'conclusion'  => "Generate a conclusion section for this content. Use <p> tags. Summarize key takeaways, provide actionable next steps, and reinforce the main message.",
+		);
+
+		$instruction = isset( $instructions[ $section_type ] )
+			? $instructions[ $section_type ]
+			: "Generate a {$section_type} section for this content.";
+
+		$prompt  = "{$instruction}\n\n";
+		$prompt .= "Rules:\n";
+		$prompt .= "- Return ONLY the HTML content, no wrapper div or section heading (the user will add their own)\n";
+		$prompt .= "- Use semantic HTML (p, ul, ol, dl, h3, strong, em)\n";
+		$prompt .= "- Write in the same language as the original content\n";
+		$prompt .= "- Be factual, specific, and citable\n\n";
+		$prompt .= "CONTENT:\n{$post_context}";
+
+		return $this->call_api( $prompt, 1000 );
+	}
+
+	/**
+	 * Suggest content improvements based on failed content analyzer checks.
+	 *
+	 * @param string $content       Post content.
+	 * @param array  $failed_checks Array of check names that scored poorly.
+	 * @param int    $post_id       Post ID.
+	 * @return string|WP_Error JSON array of improvement suggestions or error.
+	 */
+	public function suggest_improvements( $content, $failed_checks, $post_id ) {
+		$post_context = $this->get_post_context( $post_id );
+
+		$checks_str = implode( ', ', $failed_checks );
+
+		$prompt  = "This content scored poorly on these AI-readiness checks: {$checks_str}.\n\n";
+		$prompt .= "Analyze the content and provide specific, actionable improvements for each failed check.\n\n";
+		$prompt .= "Return a JSON array of objects, each with:\n";
+		$prompt .= "- \"check\": string (the check name)\n";
+		$prompt .= "- \"title\": string (short action title)\n";
+		$prompt .= "- \"description\": string (detailed explanation of what to change and why)\n";
+		$prompt .= "- \"priority\": one of \"high\", \"medium\", \"low\"\n";
+		$prompt .= "- \"example\": string (optional — a concrete example of the improvement, e.g., a rewritten sentence)\n\n";
+		$prompt .= "Return ONLY valid JSON. No markdown code blocks.\n\n";
+		$prompt .= "CONTENT:\n{$post_context}";
+
+		return $this->call_api( $prompt, 1500 );
+	}
+
 	/* ── Site Context Builders ──────────────────────────────────── */
 
 	/**
@@ -435,7 +745,7 @@ class AI_SEO_Pilot_AI_Engine {
 		}
 
 		// Full content (truncated to ~3000 words to fit in context).
-		$plain = wp_strip_all_tags( strip_shortcodes( $post->post_content ) );
+		$plain = $this->extract_text_from_content( $post->post_content );
 		$words = explode( ' ', $plain );
 		if ( count( $words ) > 3000 ) {
 			$plain = implode( ' ', array_slice( $words, 0, 3000 ) ) . '...';
@@ -446,7 +756,7 @@ class AI_SEO_Pilot_AI_Engine {
 
 		// Word count.
 		$lines[] = '';
-		$lines[] = 'Word count: ' . str_word_count( wp_strip_all_tags( $post->post_content ) );
+		$lines[] = 'Word count: ' . str_word_count( $plain );
 
 		return implode( "\n", $lines );
 	}
@@ -747,6 +1057,84 @@ class AI_SEO_Pilot_AI_Engine {
 	/* ── Helpers ─────────────────────────────────────────────────── */
 
 	/**
+	 * Extract readable text from post content, handling Gutenberg blocks,
+	 * Divi 5 blocks (JSON-in-comments), traditional shortcodes, and plain HTML.
+	 *
+	 * @param string $content Raw post_content.
+	 * @return string Plain text.
+	 */
+	private function extract_text_from_content( $content ) {
+		if ( empty( $content ) ) {
+			return '';
+		}
+
+		$texts = array();
+
+		// 1. Extract text from Divi 5 / Gutenberg block comments with JSON attributes.
+		//    Matches: <!-- wp:divi/text {"content":{"innerContent":{"desktop":{"value":"..."}}}} -->
+		//    Also matches other blocks that embed text in JSON attributes.
+		if ( preg_match_all( '/<!--\s+wp:[^\s]+ (\{.+?\})\s+(?:\/)?-->/s', $content, $block_matches ) ) {
+			foreach ( $block_matches[1] as $json_str ) {
+				$json = json_decode( $json_str, true );
+				if ( ! is_array( $json ) ) {
+					continue;
+				}
+				// Recursively extract string values from JSON that look like HTML content.
+				$this->extract_html_from_json( $json, $texts );
+			}
+		}
+
+		// 2. If we found text from JSON attributes, use that.
+		//    Otherwise fall back to stripping block comments and shortcodes.
+		if ( ! empty( $texts ) ) {
+			$raw = implode( ' ', $texts );
+		} else {
+			// Strip Gutenberg block comments: <!-- wp:xxx --> and <!-- /wp:xxx -->
+			$raw = preg_replace( '/<!--\s+\/?wp:[^\-]*?-->/s', '', $content );
+			// Strip traditional shortcode tags but keep enclosed text.
+			$raw = preg_replace( '/\[\/?[^\]]+\]/', '', $raw );
+		}
+
+		$plain = wp_strip_all_tags( $raw );
+		$plain = preg_replace( '/\s+/', ' ', trim( $plain ) );
+
+		return $plain;
+	}
+
+	/**
+	 * Recursively extract HTML string values from a decoded JSON structure.
+	 * Looks for strings that contain HTML tags (likely content).
+	 *
+	 * @param mixed $data   Decoded JSON value.
+	 * @param array $texts  Collected text strings (by reference).
+	 */
+	private function extract_html_from_json( $data, &$texts ) {
+		if ( is_string( $data ) ) {
+			// Skip pure CSS/style content.
+			if ( preg_match( '/^\s*<style[\s>]/i', $data ) ) {
+				return;
+			}
+			// Only collect strings that look like HTML content (contain tags or entities).
+			if ( preg_match( '/<[a-z][\s\S]*>/i', $data ) || preg_match( '/&[a-z]+;/i', $data ) ) {
+				// Remove any inline <style> blocks before extracting text.
+				$clean = preg_replace( '/<style[^>]*>.*?<\/style>/si', '', $data );
+				$stripped = wp_strip_all_tags( $clean );
+				$stripped = trim( $stripped );
+				if ( mb_strlen( $stripped ) > 2 ) {
+					$texts[] = $stripped;
+				}
+			}
+			return;
+		}
+
+		if ( is_array( $data ) ) {
+			foreach ( $data as $value ) {
+				$this->extract_html_from_json( $value, $texts );
+			}
+		}
+	}
+
+	/**
 	 * Truncate content to a max character length, stripping HTML.
 	 *
 	 * @param string $text Raw text/HTML.
@@ -754,9 +1142,7 @@ class AI_SEO_Pilot_AI_Engine {
 	 * @return string
 	 */
 	private function truncate_text( $text, $max = 200 ) {
-		$text = wp_strip_all_tags( strip_shortcodes( $text ) );
-		$text = preg_replace( '/\s+/', ' ', $text );
-		$text = trim( $text );
+		$text = $this->extract_text_from_content( $text );
 
 		if ( mb_strlen( $text ) <= $max ) {
 			return $text;

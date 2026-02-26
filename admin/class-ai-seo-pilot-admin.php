@@ -26,6 +26,18 @@ class AI_SEO_Pilot_Admin {
 		add_action( 'wp_ajax_ai_seo_pilot_bulk_generate_meta', array( $this, 'ajax_bulk_generate_meta' ) );
 		add_action( 'wp_ajax_ai_seo_pilot_generate_tagline', array( $this, 'ajax_generate_tagline' ) );
 
+		// Content Optimization AI AJAX handlers.
+		add_action( 'wp_ajax_ai_seo_pilot_analyze_readability', array( $this, 'ajax_analyze_readability' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_analyze_quality', array( $this, 'ajax_analyze_quality' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_quality_scan', array( $this, 'ajax_quality_scan' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_extract_keywords', array( $this, 'ajax_extract_keywords' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_save_focus_keyword', array( $this, 'ajax_save_focus_keyword' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_related_keywords', array( $this, 'ajax_related_keywords' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_internal_links', array( $this, 'ajax_internal_links' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_rewrite_paragraph', array( $this, 'ajax_rewrite_paragraph' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_generate_section', array( $this, 'ajax_generate_section' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_adjust_tone', array( $this, 'ajax_adjust_tone' ) );
+
 		// Meta boxes.
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
 		add_action( 'save_post', array( $this, 'save_meta_box' ) );
@@ -88,6 +100,24 @@ class AI_SEO_Pilot_Admin {
 
 		add_submenu_page(
 			'ai-seo-pilot',
+			__( 'Keywords', 'ai-seo-pilot' ),
+			__( 'Keywords', 'ai-seo-pilot' ),
+			'manage_options',
+			'ai-seo-pilot-keywords',
+			array( $this, 'render_keywords_page' )
+		);
+
+		add_submenu_page(
+			'ai-seo-pilot',
+			__( 'Content Quality', 'ai-seo-pilot' ),
+			__( 'Content Quality', 'ai-seo-pilot' ),
+			'manage_options',
+			'ai-seo-pilot-content-quality',
+			array( $this, 'render_content_quality_page' )
+		);
+
+		add_submenu_page(
+			'ai-seo-pilot',
 			__( 'Settings', 'ai-seo-pilot' ),
 			__( 'Settings', 'ai-seo-pilot' ),
 			'manage_options',
@@ -143,6 +173,14 @@ class AI_SEO_Pilot_Admin {
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_ai_ollama_server_url' );
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_ai_ollama_model' );
 
+		// Content Optimization AI.
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_content_optimizer_enabled' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_internal_linking_enabled' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_keyword_tracker_enabled' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_readability_enabled' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_content_quality_enabled' );
+		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_default_tone' );
+
 		// Advanced.
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_robots_txt_enhance' );
 		register_setting( 'ai_seo_pilot_general', 'ai_seo_pilot_x_robots_tag' );
@@ -158,6 +196,8 @@ class AI_SEO_Pilot_Admin {
 			'ai-seo-pilot_page_ai-seo-pilot-settings',
 			'ai-seo-pilot_page_ai-seo-pilot-llms-txt',
 			'ai-seo-pilot_page_ai-seo-pilot-seo-check',
+			'ai-seo-pilot_page_ai-seo-pilot-keywords',
+			'ai-seo-pilot_page_ai-seo-pilot-content-quality',
 		);
 
 		// Load on post edit screens for the meta box and on WP dashboard.
@@ -184,9 +224,11 @@ class AI_SEO_Pilot_Admin {
 		);
 
 		wp_localize_script( 'ai-seo-pilot-admin', 'aiSeoPilot', array(
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'ai_seo_pilot_nonce' ),
-			'siteUrl' => site_url(),
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( 'ai_seo_pilot_nonce' ),
+			'restNonce' => wp_create_nonce( 'wp_rest' ),
+			'restUrl'   => esc_url_raw( rest_url() ),
+			'siteUrl'   => site_url(),
 		) );
 	}
 
@@ -206,6 +248,14 @@ class AI_SEO_Pilot_Admin {
 
 	public function render_seo_check_page() {
 		include AI_SEO_PILOT_PATH . 'admin/partials/seo-check.php';
+	}
+
+	public function render_keywords_page() {
+		include AI_SEO_PILOT_PATH . 'admin/partials/keywords.php';
+	}
+
+	public function render_content_quality_page() {
+		include AI_SEO_PILOT_PATH . 'admin/partials/content-quality.php';
 	}
 
 	/* ── Dashboard Widget ────────────────────────────────────── */
@@ -595,5 +645,256 @@ class AI_SEO_Pilot_Admin {
 		update_option( 'blogdescription', $tagline );
 
 		wp_send_json_success( array( 'tagline' => $tagline ) );
+	}
+
+	/* ── Content Optimization AI AJAX Handlers ──────────────── */
+
+	public function ajax_analyze_readability() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->readability->analyze( $post_id, true );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	public function ajax_analyze_quality() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->content_quality->analyze( $post_id, true );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	public function ajax_quality_scan() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+		$batch_size = 5;
+
+		$posts = get_posts( array(
+			'post_type'      => array( 'post', 'page' ),
+			'post_status'    => 'publish',
+			'posts_per_page' => $batch_size,
+			'offset'         => $offset,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+		) );
+
+		$total_posts = wp_count_posts( 'post' );
+		$total_pages = wp_count_posts( 'page' );
+		$total       = ( $total_posts->publish ?? 0 ) + ( $total_pages->publish ?? 0 );
+
+		$plugin    = AI_SEO_Pilot::get_instance();
+		$processed = 0;
+
+		foreach ( $posts as $post ) {
+			$result = $plugin->content_quality->analyze( $post->ID, true );
+			if ( ! is_wp_error( $result ) ) {
+				$processed++;
+			}
+		}
+
+		wp_send_json_success( array(
+			'processed' => $processed,
+			'offset'    => $offset,
+			'total'     => $total,
+			'remaining' => max( 0, $total - $offset - $batch_size ),
+			'complete'  => ( $offset + $batch_size ) >= $total,
+		) );
+	}
+
+	public function ajax_extract_keywords() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin   = AI_SEO_Pilot::get_instance();
+		$response = $plugin->ai_engine->extract_keywords( $post_id );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( $response->get_error_message() );
+		}
+
+		$keywords = json_decode( preg_replace( '/^```(?:json)?\s*|\s*```$/i', '', trim( $response ) ), true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error( __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );
+		}
+
+		// Store in tracking table.
+		$plugin->keyword_tracker->on_save_post( $post_id, get_post( $post_id ) );
+
+		wp_send_json_success( array( 'keywords' => $keywords ) );
+	}
+
+	public function ajax_save_focus_keyword() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['keyword'] ) ) : '';
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		update_post_meta( $post_id, '_ai_seo_pilot_focus_keyword', $keyword );
+
+		wp_send_json_success( array( 'saved' => true ) );
+	}
+
+	public function ajax_related_keywords() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$keyword = isset( $_POST['keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['keyword'] ) ) : '';
+		if ( empty( $keyword ) ) {
+			wp_send_json_error( __( 'Keyword is required.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin   = AI_SEO_Pilot::get_instance();
+		$response = $plugin->ai_engine->suggest_related_keywords( $keyword );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_error( $response->get_error_message() );
+		}
+
+		$related = json_decode( preg_replace( '/^```(?:json)?\s*|\s*```$/i', '', trim( $response ) ), true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			wp_send_json_error( __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );
+		}
+
+		wp_send_json_success( array( 'related' => $related ) );
+	}
+
+	public function ajax_internal_links() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->internal_linking->get_suggestions( $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	public function ajax_rewrite_paragraph() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id     = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$paragraph   = isset( $_POST['paragraph'] ) ? wp_kses_post( wp_unslash( $_POST['paragraph'] ) ) : '';
+		$instruction = isset( $_POST['instruction'] ) ? sanitize_text_field( wp_unslash( $_POST['instruction'] ) ) : '';
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		if ( empty( $paragraph ) || empty( $instruction ) ) {
+			wp_send_json_error( __( 'Paragraph and instruction are required.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->ai_engine->rewrite_paragraph( $paragraph, $instruction, $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( array( 'rewritten' => $result ) );
+	}
+
+	public function ajax_generate_section() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id      = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$section_type = isset( $_POST['section_type'] ) ? sanitize_text_field( wp_unslash( $_POST['section_type'] ) ) : '';
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$valid_types = array( 'faq', 'statistics', 'definitions', 'summary', 'conclusion' );
+		if ( ! in_array( $section_type, $valid_types, true ) ) {
+			wp_send_json_error( __( 'Invalid section type.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->ai_engine->generate_content_section( $section_type, $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( array( 'html' => $result, 'type' => $section_type ) );
+	}
+
+	public function ajax_adjust_tone() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( $_POST['content'] ) ) : '';
+		$tone    = isset( $_POST['tone'] ) ? sanitize_text_field( wp_unslash( $_POST['tone'] ) ) : '';
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$valid_tones = array( 'authoritative', 'conversational', 'technical', 'simplified' );
+		if ( ! in_array( $tone, $valid_tones, true ) ) {
+			wp_send_json_error( __( 'Invalid tone.', 'ai-seo-pilot' ) );
+		}
+
+		$instructions = array(
+			'authoritative'  => 'Rewrite in an authoritative, expert tone with confident language and specific facts.',
+			'conversational' => 'Rewrite in a conversational, friendly tone with simple language and contractions.',
+			'technical'      => 'Rewrite in a technical, precise tone with industry terminology and structured language.',
+			'simplified'     => 'Rewrite in a simplified, easy-to-understand tone with short sentences and common words.',
+		);
+
+		$plugin = AI_SEO_Pilot::get_instance();
+		$result = $plugin->ai_engine->rewrite_paragraph( $content, $instructions[ $tone ], $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+		}
+
+		wp_send_json_success( array( 'content' => $result, 'tone' => $tone ) );
 	}
 }

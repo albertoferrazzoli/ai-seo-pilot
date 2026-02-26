@@ -44,20 +44,36 @@ $options = array(
 	'ai_seo_pilot_ai_deepseek_model',
 	'ai_seo_pilot_remove_data_on_uninstall',
 	'ai_seo_pilot_db_version',
+	// Content Optimization AI options.
+	'ai_seo_pilot_content_optimizer_enabled',
+	'ai_seo_pilot_internal_linking_enabled',
+	'ai_seo_pilot_keyword_tracker_enabled',
+	'ai_seo_pilot_readability_enabled',
+	'ai_seo_pilot_content_quality_enabled',
+	'ai_seo_pilot_default_tone',
 );
 
 foreach ( $options as $option ) {
 	delete_option( $option );
 }
 
-// 2. Drop the bot visits table.
+// 2. Drop all plugin tables.
 global $wpdb;
-$table_name = $wpdb->prefix . 'ai_seo_pilot_bot_visits';
-$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$tables = array(
+	$wpdb->prefix . 'ai_seo_pilot_bot_visits',
+	$wpdb->prefix . 'ai_seo_pilot_keyword_tracking',
+	$wpdb->prefix . 'ai_seo_pilot_content_quality',
+);
+foreach ( $tables as $table_name ) {
+	$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+}
 
-// 3. Delete all post meta with the plugin's schema type key.
+// 3. Delete all post meta with the plugin's keys.
 delete_post_meta_by_key( '_ai_seo_pilot_schema_type' );
 delete_post_meta_by_key( '_ai_seo_pilot_meta_description' );
+delete_post_meta_by_key( '_ai_seo_pilot_focus_keyword' );
+delete_post_meta_by_key( '_ai_seo_pilot_readability_cache' );
+delete_post_meta_by_key( '_ai_seo_pilot_quality_cache' );
 
 // 4. Delete transients.
 delete_transient( 'ai_seo_pilot_llms_txt_cache' );

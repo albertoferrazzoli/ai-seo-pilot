@@ -413,20 +413,29 @@
 		});
 	});
 
-	/* ── Bot Visits Chart (Chart.js) ───────────────────────── */
+	/* ── Dashboard Charts (Chart.js) ──────────────────────── */
 	$(function () {
-		var canvas = document.getElementById('ai-seo-pilot-bot-chart');
-		if (!canvas || typeof Chart === 'undefined') {
-			if (canvas && typeof Chart === 'undefined') {
-				var script = document.createElement('script');
-				script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
-				script.onload = initBotChart;
-				document.head.appendChild(script);
-			}
-			return;
+		var needsChart = document.getElementById('ai-seo-pilot-bot-chart') ||
+			document.getElementById('ai-seo-pilot-quality-chart') ||
+			document.getElementById('ai-seo-pilot-bots-pie-chart');
+
+		if (!needsChart) return;
+
+		if (typeof Chart === 'undefined') {
+			var script = document.createElement('script');
+			script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+			script.onload = initAllCharts;
+			document.head.appendChild(script);
+		} else {
+			initAllCharts();
 		}
-		initBotChart();
 	});
+
+	function initAllCharts() {
+		initBotChart();
+		initQualityChart();
+		initBotsPieChart();
+	}
 
 	function initBotChart() {
 		var canvas = document.getElementById('ai-seo-pilot-bot-chart');
@@ -463,6 +472,69 @@
 					y: {
 						beginAtZero: true,
 						ticks: { precision: 0 }
+					}
+				}
+			}
+		});
+	}
+
+	function initQualityChart() {
+		var canvas = document.getElementById('ai-seo-pilot-quality-chart');
+		if (!canvas || !window.aiSeoPilotQualityData) return;
+
+		var d = window.aiSeoPilotQualityData;
+
+		new Chart(canvas, {
+			type: 'doughnut',
+			data: {
+				labels: ['Good (70+)', 'Needs Work (40-69)', 'Thin (<40)'],
+				datasets: [{
+					data: [d.good, d.needs_work, d.thin],
+					backgroundColor: ['#00a32a', '#dba617', '#d63638'],
+					borderWidth: 2,
+					borderColor: '#fff'
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				cutout: '60%',
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' }
+					}
+				}
+			}
+		});
+	}
+
+	function initBotsPieChart() {
+		var canvas = document.getElementById('ai-seo-pilot-bots-pie-chart');
+		if (!canvas || !window.aiSeoPilotBotsData) return;
+
+		var d = window.aiSeoPilotBotsData;
+		var colors = ['#2271b1', '#7c3aed', '#00a32a', '#d63638', '#dba617', '#e64980', '#0ea5e9', '#f97316', '#6366f1', '#14b8a6'];
+
+		new Chart(canvas, {
+			type: 'doughnut',
+			data: {
+				labels: d.labels,
+				datasets: [{
+					data: d.values,
+					backgroundColor: colors.slice(0, d.labels.length),
+					borderWidth: 2,
+					borderColor: '#fff'
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				cutout: '55%',
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } }
 					}
 				}
 			}
@@ -526,6 +598,214 @@
 	$(document).on('click', '.ai-seo-pilot-custom-badge', function () {
 		var identifier = $(this).data('identifier');
 		$('.ai-seo-pilot-custom-bot-row[data-identifier="' + identifier + '"]').remove();
+	});
+
+	/* ── Extract Keywords (meta box) ──────────────────────── */
+	$(document).on('click', '#ai-seo-pilot-extract-keywords', function () {
+		var $btn = $(this);
+		var postId = $btn.data('post-id');
+		var $status = $('#ai-seo-pilot-keyword-status');
+		var $container = $('#ai-seo-pilot-extracted-keywords');
+
+		$btn.prop('disabled', true);
+		$status.text('Extracting…').attr('class', 'ai-seo-pilot-status loading');
+
+		$.post(aiSeoPilot.ajaxUrl, {
+			action: 'ai_seo_pilot_extract_keywords',
+			nonce: aiSeoPilot.nonce,
+			post_id: postId
+		}, function (response) {
+			$btn.prop('disabled', false);
+
+			if (response.success && response.data.keywords) {
+				var keywords = response.data.keywords;
+				var html = '<div style="font-size:11px; margin-bottom:4px; color:#646970;">Click to set as focus:</div>';
+
+				for (var i = 0; i < keywords.length; i++) {
+					var kw = keywords[i];
+					var text = typeof kw === 'string' ? kw : (kw.keyword || '');
+					var score = kw.relevance_score ? ' (' + Math.round(kw.relevance_score * 100) + '%)' : '';
+					html += '<span class="aisp-keyword-tag" data-keyword="' + $('<span>').text(text).html() + '">' +
+						$('<span>').text(text).html() + '<small style="color:#646970;">' + score + '</small></span>';
+				}
+
+				$container.html(html).show();
+
+				if (keywords.length && !$('#ai_seo_pilot_focus_keyword').val()) {
+					var first = typeof keywords[0] === 'string' ? keywords[0] : (keywords[0].keyword || '');
+					$('#ai_seo_pilot_focus_keyword').val(first);
+				}
+
+				$status.text(keywords.length + ' keywords').attr('class', 'ai-seo-pilot-status success');
+			} else {
+				$status.text(response.data || 'Error').attr('class', 'ai-seo-pilot-status error');
+			}
+		}).fail(function () {
+			$btn.prop('disabled', false);
+			$status.text('Request failed').attr('class', 'ai-seo-pilot-status error');
+		});
+	});
+
+	$(document).on('click', '.aisp-keyword-tag', function () {
+		var keyword = $(this).data('keyword');
+		$('#ai_seo_pilot_focus_keyword').val(keyword);
+		$(this).addClass('active').siblings('.aisp-keyword-tag').removeClass('active');
+	});
+
+	/* ── Find Internal Links (meta box) ───────────────────── */
+	$(document).on('click', '#ai-seo-pilot-find-links', function () {
+		var $btn = $(this);
+		var postId = $btn.data('post-id');
+		var $status = $('#ai-seo-pilot-links-status');
+		var $list = $('#ai-seo-pilot-links-list');
+
+		$btn.prop('disabled', true);
+		$status.text('AI is analyzing…').attr('class', 'ai-seo-pilot-status loading');
+		$list.hide().empty();
+
+		$.post(aiSeoPilot.ajaxUrl, {
+			action: 'ai_seo_pilot_internal_links',
+			nonce: aiSeoPilot.nonce,
+			post_id: postId
+		}, function (response) {
+			$btn.prop('disabled', false);
+
+			if (response.success) {
+				var suggestions = response.data.suggestions;
+
+				if (!suggestions || !suggestions.length) {
+					$list.html('<p style="font-size:12px; color:#646970;">' +
+						$('<span>').text(response.data.message || 'No suggestions found.').html() + '</p>');
+					$list.show();
+					$status.text('Done').attr('class', 'ai-seo-pilot-status success');
+					return;
+				}
+
+				var html = '';
+				for (var i = 0; i < suggestions.length; i++) {
+					var s = suggestions[i];
+					html += '<div class="aisp-link-suggestion">';
+					html += '<div><a href="' + $('<span>').text(s.url).html() + '" target="_blank">' +
+						$('<span>').text(s.anchor_text || s.url).html() + '</a></div>';
+					if (s.reason) {
+						html += '<div style="color:#646970; margin-top:2px; font-size:11px;">' + $('<span>').text(s.reason).html() + '</div>';
+					}
+					if (s.where) {
+						html += '<div style="color:#2271b1; margin-top:2px; font-size:11px; font-style:italic;">→ ' + $('<span>').text(s.where).html() + '</div>';
+					}
+					html += '</div>';
+				}
+
+				$list.html(html).show();
+				$status.text(suggestions.length + ' suggestions').attr('class', 'ai-seo-pilot-status success');
+			} else {
+				$status.text(response.data || 'Error').attr('class', 'ai-seo-pilot-status error');
+			}
+		}).fail(function () {
+			$btn.prop('disabled', false);
+			$status.text('Request failed').attr('class', 'ai-seo-pilot-status error');
+		});
+	});
+
+	/* ── Content Quality Scan (chunked progress) ──────────── */
+	$(document).on('click', '#ai-seo-pilot-quality-scan', function () {
+		var $btn = $(this);
+		var $status = $('#ai-seo-pilot-scan-status');
+		var $progress = $('#ai-seo-pilot-scan-progress');
+		var $bar = $('#ai-seo-pilot-progress-bar');
+		var $text = $('#ai-seo-pilot-progress-text');
+
+		$btn.prop('disabled', true);
+		$status.text('Scanning…').attr('class', 'ai-seo-pilot-status loading');
+		$progress.show();
+		$bar.css('width', '0%');
+
+		function scanBatch(offset) {
+			$.post(aiSeoPilot.ajaxUrl, {
+				action: 'ai_seo_pilot_quality_scan',
+				nonce: aiSeoPilot.nonce,
+				offset: offset
+			}, function (response) {
+				if (response.success) {
+					var d = response.data;
+					var done = d.offset + 5;
+					var pct = d.total > 0 ? Math.min(Math.round((done / d.total) * 100), 100) : 100;
+					$bar.css('width', pct + '%');
+					$text.text('Processed ' + Math.min(done, d.total) + ' of ' + d.total + ' posts…');
+
+					if (d.complete) {
+						$bar.css('width', '100%');
+						$status.text('Complete!').attr('class', 'ai-seo-pilot-status success');
+						$text.text('Scan complete. Reloading…');
+						setTimeout(function () { window.location.reload(); }, 1000);
+					} else {
+						scanBatch(d.offset + 5);
+					}
+				} else {
+					$btn.prop('disabled', false);
+					$status.text('Error during scan').attr('class', 'ai-seo-pilot-status error');
+				}
+			}).fail(function () {
+				$btn.prop('disabled', false);
+				$status.text('Request failed').attr('class', 'ai-seo-pilot-status error');
+			});
+		}
+
+		scanBatch(0);
+	});
+
+	/* ── Cannibalization Check (keywords page) ────────────── */
+	$(document).on('click', '#ai-seo-pilot-check-cannibalization', function () {
+		var $btn = $(this);
+		var $status = $('#ai-seo-pilot-cannibal-status');
+		var $results = $('#ai-seo-pilot-cannibal-results');
+
+		$btn.prop('disabled', true);
+		$status.text('Checking…').attr('class', 'ai-seo-pilot-status loading');
+		$results.hide().empty();
+
+		$.ajax({
+			url: aiSeoPilot.restUrl + 'ai-seo-pilot/v1/keywords/cannibalization',
+			method: 'GET',
+			beforeSend: function (xhr) {
+				xhr.setRequestHeader('X-WP-Nonce', aiSeoPilot.restNonce);
+			}
+		}).done(function (response) {
+			$btn.prop('disabled', false);
+			var groups = response.groups || [];
+
+			if (!groups.length) {
+				$results.html('<p style="font-size:12px; color:#646970;">' +
+					$('<span>').text(response.message || 'No cannibalization issues found.').html() + '</p>');
+				$results.show();
+				$status.text('No issues').attr('class', 'ai-seo-pilot-status success');
+				return;
+			}
+
+			var html = '<table class="widefat striped"><thead><tr>' +
+				'<th>Keyword</th><th>Conflicting Posts</th><th>Recommendation</th></tr></thead><tbody>';
+
+			for (var i = 0; i < groups.length; i++) {
+				var g = groups[i];
+				var posts = g.posts || [];
+				var postLinks = posts.map(function (p) {
+					return '<a href="' + $('<span>').text(p.url || '#').html() + '">' +
+						$('<span>').text(p.title).html() + '</a>';
+				}).join(', ');
+				var rec = (g.analysis && g.analysis.recommendation) ? $('<span>').text(g.analysis.recommendation).html() : '';
+
+				html += '<tr><td><strong>' + $('<span>').text(g.keyword).html() + '</strong></td>' +
+					'<td style="font-size:12px;">' + postLinks + '</td>' +
+					'<td style="font-size:12px; color:#646970;">' + rec + '</td></tr>';
+			}
+
+			html += '</tbody></table>';
+			$results.html(html).show();
+			$status.text(groups.length + ' issues found').attr('class', 'ai-seo-pilot-status error');
+		}).fail(function () {
+			$btn.prop('disabled', false);
+			$status.text('Request failed').attr('class', 'ai-seo-pilot-status error');
+		});
 	});
 
 })(jQuery);

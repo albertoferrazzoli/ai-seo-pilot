@@ -26,8 +26,31 @@ $types = array(
 	'none'        => __( 'Disabled', 'ai-seo-pilot' ),
 );
 
+$focus_keyword = get_post_meta( $post->ID, '_ai_seo_pilot_focus_keyword', true );
+
 wp_nonce_field( 'ai_seo_pilot_save_schema', 'ai_seo_pilot_schema_nonce' );
+wp_nonce_field( 'ai_seo_pilot_save_keyword', '_ai_seo_pilot_keyword_nonce' );
 ?>
+
+<!-- Focus Keyword -->
+<?php if ( 'yes' === get_option( 'ai_seo_pilot_keyword_tracker_enabled', 'yes' ) ) : ?>
+<p><strong><?php esc_html_e( 'Focus Keyword', 'ai-seo-pilot' ); ?></strong></p>
+<div style="display:flex; gap:4px; align-items:center;">
+	<input type="text" name="ai_seo_pilot_focus_keyword" id="ai_seo_pilot_focus_keyword"
+		value="<?php echo esc_attr( $focus_keyword ); ?>"
+		style="flex:1; font-size:12px;" placeholder="<?php esc_attr_e( 'Enter focus keyword...', 'ai-seo-pilot' ); ?>">
+	<?php if ( $ai_configured ) : ?>
+		<button type="button" class="button button-small" id="ai-seo-pilot-extract-keywords"
+			data-post-id="<?php echo esc_attr( $post->ID ); ?>"
+			style="background:#7c3aed; border-color:#6d28d9; color:#fff; font-size:11px; white-space:nowrap;">
+			<?php esc_html_e( 'Extract AI', 'ai-seo-pilot' ); ?>
+		</button>
+	<?php endif; ?>
+</div>
+<span id="ai-seo-pilot-keyword-status" class="ai-seo-pilot-status" style="font-size:11px;"></span>
+<div id="ai-seo-pilot-extracted-keywords" style="display:none; margin-top:6px;"></div>
+<hr style="margin:12px 0;">
+<?php endif; ?>
 
 <!-- Meta Description -->
 <p><strong><?php esc_html_e( 'AI Meta Description', 'ai-seo-pilot' ); ?></strong></p>
@@ -85,6 +108,21 @@ wp_nonce_field( 'ai_seo_pilot_save_schema', 'ai_seo_pilot_schema_nonce' );
 <div id="ai-seo-pilot-suggestions-list" style="display:none; margin-top:8px;"></div>
 
 <hr style="margin:12px 0;">
+
+<!-- Internal Linking -->
+<?php if ( 'yes' === get_option( 'ai_seo_pilot_internal_linking_enabled', 'yes' ) ) : ?>
+<p><strong><?php esc_html_e( 'Internal Links', 'ai-seo-pilot' ); ?></strong></p>
+<p>
+	<button type="button" class="button button-small" id="ai-seo-pilot-find-links"
+		data-post-id="<?php echo esc_attr( $post->ID ); ?>"
+		style="background:#7c3aed; border-color:#6d28d9; color:#fff;">
+		<?php esc_html_e( 'Find Links with AI', 'ai-seo-pilot' ); ?>
+	</button>
+	<span id="ai-seo-pilot-links-status" class="ai-seo-pilot-status" style="font-size:11px;"></span>
+</p>
+<div id="ai-seo-pilot-links-list" style="display:none; margin-top:8px;"></div>
+<hr style="margin:12px 0;">
+<?php endif; ?>
 <?php endif; ?>
 
 <!-- JSON-LD Preview -->

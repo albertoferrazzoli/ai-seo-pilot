@@ -29,6 +29,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<a href="#ai-bots" class="nav-tab" data-tab="ai-bots">
 				<?php esc_html_e( 'AI Bots', 'ai-seo-pilot' ); ?>
 			</a>
+			<a href="#content-optimization" class="nav-tab" data-tab="content-optimization">
+				<?php esc_html_e( 'Content Optimization', 'ai-seo-pilot' ); ?>
+			</a>
 			<a href="#advanced" class="nav-tab" data-tab="advanced">
 				<?php esc_html_e( 'Advanced', 'ai-seo-pilot' ); ?>
 			</a>
@@ -637,6 +640,90 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<button type="button" class="button" id="ai-seo-pilot-add-bot"><?php esc_html_e( 'Add Bot', 'ai-seo-pilot' ); ?></button>
 			</div>
 			<p class="description"><?php esc_html_e( 'Custom bots will be tracked alongside the built-in list. Click Save Changes to apply.', 'ai-seo-pilot' ); ?></p>
+		</div>
+
+		<!-- Content Optimization Tab -->
+		<div id="tab-content-optimization" class="ai-seo-pilot-tab-content" style="display:none;">
+			<p><?php esc_html_e( 'AI-powered content optimization features. All features require an AI provider to be configured.', 'ai-seo-pilot' ); ?></p>
+			<table class="form-table">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'AI Readability Analysis', 'ai-seo-pilot' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="ai_seo_pilot_readability_enabled" value="yes"
+								<?php checked( get_option( 'ai_seo_pilot_readability_enabled', 'yes' ), 'yes' ); ?>>
+							<?php esc_html_e( 'Analyze content readability using AI', 'ai-seo-pilot' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'AI Content Quality', 'ai-seo-pilot' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="ai_seo_pilot_content_quality_enabled" value="yes"
+								<?php checked( get_option( 'ai_seo_pilot_content_quality_enabled', 'yes' ), 'yes' ); ?>>
+							<?php esc_html_e( 'Evaluate content quality, detect thin content and duplicates', 'ai-seo-pilot' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'AI Keyword Tracker', 'ai-seo-pilot' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="ai_seo_pilot_keyword_tracker_enabled" value="yes"
+								<?php checked( get_option( 'ai_seo_pilot_keyword_tracker_enabled', 'yes' ), 'yes' ); ?>>
+							<?php esc_html_e( 'Extract keywords, track density, detect cannibalization', 'ai-seo-pilot' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'AI Internal Linking', 'ai-seo-pilot' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="ai_seo_pilot_internal_linking_enabled" value="yes"
+								<?php checked( get_option( 'ai_seo_pilot_internal_linking_enabled', 'yes' ), 'yes' ); ?>>
+							<?php esc_html_e( 'AI-powered internal link suggestions and orphan detection', 'ai-seo-pilot' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'AI Content Optimizer', 'ai-seo-pilot' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="ai_seo_pilot_content_optimizer_enabled" value="yes"
+								<?php checked( get_option( 'ai_seo_pilot_content_optimizer_enabled', 'yes' ), 'yes' ); ?>>
+							<?php esc_html_e( 'Rewrite paragraphs, adjust tone, generate sections with AI', 'ai-seo-pilot' ); ?>
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="ai_seo_pilot_default_tone"><?php esc_html_e( 'Default Tone', 'ai-seo-pilot' ); ?></label>
+					</th>
+					<td>
+						<select name="ai_seo_pilot_default_tone" id="ai_seo_pilot_default_tone">
+							<?php
+							$tones = array(
+								'authoritative'  => __( 'Authoritative', 'ai-seo-pilot' ),
+								'conversational' => __( 'Conversational', 'ai-seo-pilot' ),
+								'technical'      => __( 'Technical', 'ai-seo-pilot' ),
+								'simplified'     => __( 'Simplified', 'ai-seo-pilot' ),
+							);
+							$current_tone = get_option( 'ai_seo_pilot_default_tone', 'authoritative' );
+							foreach ( $tones as $value => $label ) :
+							?>
+								<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $current_tone, $value ); ?>>
+									<?php echo esc_html( $label ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'Default tone for content rewriting and optimization.', 'ai-seo-pilot' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<p class="description" style="margin-top:12px; padding:10px; background:#fff3cd; border-left:4px solid #dba617;">
+				<?php esc_html_e( 'Note: Every AI analysis consumes API tokens. Results are cached and only regenerated when you explicitly request it or when content is saved.', 'ai-seo-pilot' ); ?>
+			</p>
 		</div>
 
 		<!-- Advanced Tab -->

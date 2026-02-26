@@ -13,6 +13,11 @@ class AI_SEO_Pilot {
 	public $ai_visibility;
 	public $sitemap_ai;
 	public $ai_engine;
+	public $readability;
+	public $content_quality;
+	public $keyword_tracker;
+	public $internal_linking;
+	public $content_optimizer;
 	public $admin;
 	public $public;
 
@@ -40,6 +45,13 @@ class AI_SEO_Pilot {
 		$this->ai_visibility    = new AI_SEO_Pilot_AI_Visibility();
 		$this->sitemap_ai       = new AI_SEO_Pilot_Sitemap_AI();
 		$this->ai_engine        = new AI_SEO_Pilot_AI_Engine();
+
+		// Content Optimization AI modules.
+		$this->readability       = new AI_SEO_Pilot_Readability();
+		$this->content_quality   = new AI_SEO_Pilot_Content_Quality();
+		$this->keyword_tracker   = new AI_SEO_Pilot_Keyword_Tracker();
+		$this->internal_linking  = new AI_SEO_Pilot_Internal_Linking();
+		$this->content_optimizer = new AI_SEO_Pilot_Content_Optimizer();
 
 		// Admin.
 		if ( is_admin() ) {

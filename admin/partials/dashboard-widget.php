@@ -42,18 +42,18 @@ $features = array(
 <style>
 	.aisp-widget { font-size: 13px; }
 	.aisp-widget-stats { display: flex; gap: 12px; margin-bottom: 14px; }
-	.aisp-widget-stat { flex: 1; text-align: center; background: #f6f7f7; border-radius: 4px; padding: 10px 6px; }
-	.aisp-widget-stat .num { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; color: #1d2327; }
-	.aisp-widget-stat .lbl { font-size: 11px; color: #646970; }
+	.aisp-widget-stat { flex: 1; text-align: center; background: #f9fafb; border-radius: 10px; padding: 10px 6px; }
+	.aisp-widget-stat .num { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; color: #111827; }
+	.aisp-widget-stat .lbl { font-size: 11px; color: #6b7280; }
 	.aisp-widget-score { display: inline-flex; align-items: center; justify-content: center;
 		width: 36px; height: 36px; border-radius: 50%; font-size: 14px; font-weight: 700; color: #fff; }
 	.aisp-widget-features { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 	.aisp-widget-features .feat { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
-	.aisp-widget-features .feat.on { background: #d4edda; color: #155724; }
-	.aisp-widget-features .feat.off { background: #f0f0f1; color: #646970; }
+	.aisp-widget-features .feat.on { background: #ecfdf5; color: #059669; }
+	.aisp-widget-features .feat.off { background: #f3f4f6; color: #6b7280; }
 	.aisp-widget-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-	.aisp-widget-table th { text-align: left; font-weight: 600; padding: 4px 0; border-bottom: 1px solid #e0e0e0; }
-	.aisp-widget-table td { padding: 4px 0; border-bottom: 1px solid #f0f0f1; }
+	.aisp-widget-table th { text-align: left; font-weight: 600; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+	.aisp-widget-table td { padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
 	.aisp-widget-table td:last-child { text-align: right; }
 	.aisp-widget-links { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 	.aisp-widget-links a { font-size: 12px; }
@@ -73,11 +73,11 @@ $features = array(
 		</div>
 		<div class="aisp-widget-stat">
 			<?php
-			$health_bg = '#d63638';
+			$health_bg = '#f43f5e';
 			if ( $crawl_health >= 75 ) {
-				$health_bg = '#00a32a';
+				$health_bg = '#10b981';
 			} elseif ( $crawl_health >= 50 ) {
-				$health_bg = '#dba617';
+				$health_bg = '#f59e0b';
 			}
 			?>
 			<span class="aisp-widget-score" style="background:<?php echo esc_attr( $health_bg ); ?>;">
@@ -87,11 +87,11 @@ $features = array(
 		</div>
 		<div class="aisp-widget-stat">
 			<?php
-			$score_bg = '#d63638';
+			$score_bg = '#f43f5e';
 			if ( $avg_score >= $ca_threshold ) {
-				$score_bg = '#00a32a';
+				$score_bg = '#10b981';
 			} elseif ( $avg_score >= 50 ) {
-				$score_bg = '#dba617';
+				$score_bg = '#f59e0b';
 			}
 			?>
 			<span class="aisp-widget-score" style="background:<?php echo esc_attr( $score_bg ); ?>;">
@@ -123,7 +123,7 @@ $features = array(
 
 	<!-- Top Bot -->
 	<?php if ( $bot_stats['top_bot'] ) : ?>
-		<p style="margin:6px 0; font-size:12px; color:#646970;">
+		<p style="margin:6px 0; font-size:12px; color:#6b7280;">
 			<?php
 			printf(
 				/* translators: %1$s: bot name, %2$s: visit count */
@@ -162,7 +162,7 @@ $features = array(
 			</tbody>
 		</table>
 	<?php else : ?>
-		<p style="font-size:12px; color:#646970; margin:6px 0;">
+		<p style="font-size:12px; color:#6b7280; margin:6px 0;">
 			<?php esc_html_e( 'No AI bot visits recorded yet.', 'ai-seo-pilot' ); ?>
 		</p>
 	<?php endif; ?>

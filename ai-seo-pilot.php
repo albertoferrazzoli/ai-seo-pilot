@@ -60,6 +60,9 @@ register_deactivation_hook( __FILE__, array( 'AI_SEO_Pilot_Deactivator', 'deacti
 require_once __DIR__ . '/pilot-updater/class-pilot-updater.php';
 new Pilot_Updater( 'ai-seo-pilot', __FILE__ );
 
+/* ── Shared Admin UI Design System ───────────────────────────── */
+require_once __DIR__ . '/pilot-admin-ui/class-pilot-admin-ui.php';
+
 /* ── Bootstrap ────────────────────────────────────────────────── */
 add_action( 'plugins_loaded', function () {
 	AI_SEO_Pilot::get_instance()->init();

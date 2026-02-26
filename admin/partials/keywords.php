@@ -40,27 +40,27 @@ $focus_keywords = $plugin->keyword_tracker->get_all_focus_keywords();
 							<a href="<?php echo esc_url( get_edit_post_link( $kw->post_id ) ); ?>">
 								<?php echo esc_html( $kw->post_title ); ?>
 							</a>
-							<span style="color:#646970; font-size:11px;"> (<?php echo esc_html( $kw->post_type ); ?>)</span>
+							<span style="color:#6b7280; font-size:11px;"> (<?php echo esc_html( $kw->post_type ); ?>)</span>
 						</td>
 						<td>
 							<?php if ( $kw->is_focus ) : ?>
-								<span style="background:#d4edda; color:#155724; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:600;">
+								<span style="background:#ecfdf5; color:#059669; padding:2px 8px; border-radius:3px; font-size:11px; font-weight:600;">
 									<?php esc_html_e( 'Focus', 'ai-seo-pilot' ); ?>
 								</span>
 							<?php else : ?>
-								<span style="color:#646970; font-size:11px;"><?php esc_html_e( 'Secondary', 'ai-seo-pilot' ); ?></span>
+								<span style="color:#6b7280; font-size:11px;"><?php esc_html_e( 'Secondary', 'ai-seo-pilot' ); ?></span>
 							<?php endif; ?>
 						</td>
 						<td>
 							<?php
 							$score = round( (float) $kw->relevance_score * 100 );
-							$color = $score >= 70 ? '#00a32a' : ( $score >= 40 ? '#dba617' : '#d63638' );
+							$color = $score >= 70 ? '#10b981' : ( $score >= 40 ? '#f59e0b' : '#f43f5e' );
 							?>
 							<span style="color:<?php echo esc_attr( $color ); ?>; font-weight:600;">
 								<?php echo esc_html( $score ); ?>%
 							</span>
 						</td>
-						<td style="color:#646970; font-size:12px;">
+						<td style="color:#6b7280; font-size:12px;">
 							<?php echo esc_html( mysql2date( get_option( 'date_format' ), $kw->updated_at ) ); ?>
 						</td>
 					</tr>

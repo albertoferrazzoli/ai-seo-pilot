@@ -1,0 +1,895 @@
+/**
+ * Pilot Admin UI - Design System
+ *
+ * Shared CSS for all Pilot plugin admin settings pages.
+ * Namespace: .pilot-* to avoid collisions with plugin-specific styles.
+ *
+ * @version 1.0.0
+ */
+
+/* =============================================
+   Design Tokens
+   ============================================= */
+
+:root {
+	/* Primary */
+	--pilot-primary: #6366f1;
+	--pilot-primary-light: #eef2ff;
+	--pilot-primary-hover: #4f46e5;
+
+	/* Semantic */
+	--pilot-success: #10b981;
+	--pilot-success-light: #ecfdf5;
+	--pilot-warning: #f59e0b;
+	--pilot-warning-light: #fffbeb;
+	--pilot-error: #f43f5e;
+	--pilot-error-light: #fff1f2;
+	--pilot-info: #0ea5e9;
+	--pilot-info-light: #f0f9ff;
+
+	/* Neutrals */
+	--pilot-gray-50: #f9fafb;
+	--pilot-gray-100: #f3f4f6;
+	--pilot-gray-200: #e5e7eb;
+	--pilot-gray-300: #d1d5db;
+	--pilot-gray-400: #9ca3af;
+	--pilot-gray-500: #6b7280;
+	--pilot-gray-600: #4b5563;
+	--pilot-gray-700: #374151;
+	--pilot-gray-800: #1f2937;
+	--pilot-gray-900: #111827;
+
+	/* Surfaces */
+	--pilot-bg-card: #fff;
+	--pilot-bg-surface: #f9fafb;
+	--pilot-border: #e5e7eb;
+	--pilot-border-focus: #6366f1;
+
+	/* Typography */
+	--pilot-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+	--pilot-font-mono: "Consolas", "Monaco", "Courier New", monospace;
+
+	/* Spacing & Radius */
+	--pilot-radius-sm: 6px;
+	--pilot-radius-md: 8px;
+	--pilot-radius-lg: 12px;
+	--pilot-radius-full: 9999px;
+
+	/* Shadows */
+	--pilot-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--pilot-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* =============================================
+   Page Layout
+   ============================================= */
+
+.pilot-wrap {
+	max-width: 960px;
+	font-family: var(--pilot-font-family);
+}
+
+.pilot-wrap--wide {
+	max-width: none;
+}
+
+.pilot-page-title {
+	font-size: 24px;
+	font-weight: 600;
+	color: var(--pilot-gray-900);
+	margin: 12px 0 20px;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+/* =============================================
+   Tabs (Pill Style)
+   ============================================= */
+
+.pilot-tabs {
+	display: inline-flex;
+	gap: 4px;
+	padding: 4px;
+	background: var(--pilot-gray-100);
+	border-radius: var(--pilot-radius-md);
+	margin-bottom: 24px;
+}
+
+.pilot-tab {
+	padding: 7px 16px;
+	border-radius: var(--pilot-radius-sm);
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--pilot-gray-600);
+	cursor: pointer;
+	border: none;
+	background: transparent;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+	line-height: 1.4;
+}
+
+.pilot-tab:hover {
+	color: var(--pilot-gray-800);
+}
+
+.pilot-tab.active {
+	background: var(--pilot-bg-card);
+	color: var(--pilot-gray-900);
+	box-shadow: var(--pilot-shadow-sm);
+}
+
+/* =============================================
+   Cards
+   ============================================= */
+
+.pilot-card {
+	background: var(--pilot-bg-card);
+	border: 1px solid var(--pilot-border);
+	border-radius: var(--pilot-radius-lg);
+	margin: 0 0 16px;
+	overflow: hidden;
+	box-shadow: var(--pilot-shadow-md);
+}
+
+.pilot-card-header {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 16px 20px;
+}
+
+.pilot-card-header .pilot-toggle {
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.pilot-card-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.pilot-card-body {
+	padding: 16px 20px;
+	border-top: 1px solid var(--pilot-border);
+	background: var(--pilot-bg-surface);
+}
+
+/* =============================================
+   Toggle Switch
+   ============================================= */
+
+.pilot-toggle {
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+.pilot-toggle input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+	position: absolute;
+}
+
+.pilot-toggle-slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: var(--pilot-gray-300);
+	transition: background-color 0.25s ease;
+	border-radius: 24px;
+}
+
+.pilot-toggle-slider::before {
+	position: absolute;
+	content: "";
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background-color: #fff;
+	transition: transform 0.25s ease;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.pilot-toggle input:checked + .pilot-toggle-slider {
+	background-color: var(--pilot-primary);
+}
+
+.pilot-toggle input:checked + .pilot-toggle-slider::before {
+	transform: translateX(20px);
+}
+
+.pilot-toggle input:focus-visible + .pilot-toggle-slider {
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+/* =============================================
+   Typography
+   ============================================= */
+
+.pilot-section-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--pilot-gray-800);
+	margin: 0 0 2px;
+	line-height: 1.4;
+}
+
+.pilot-description {
+	font-size: 13px;
+	color: var(--pilot-gray-500);
+	line-height: 1.5;
+	margin: 4px 0 0;
+}
+
+.pilot-section-header {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--pilot-gray-700);
+	margin: 20px 0 8px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid var(--pilot-border);
+}
+
+.pilot-section-header:first-child {
+	margin-top: 0;
+}
+
+/* =============================================
+   Field Row Layout (replaces form-table)
+   ============================================= */
+
+.pilot-field-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 14px 0;
+	border-bottom: 1px solid var(--pilot-gray-100);
+}
+
+.pilot-field-row:last-child {
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.pilot-field-row:first-child {
+	padding-top: 0;
+}
+
+.pilot-field-label {
+	width: 200px;
+	flex-shrink: 0;
+	padding-top: 7px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--pilot-gray-700);
+	line-height: 1.4;
+}
+
+.pilot-field-label label {
+	cursor: pointer;
+}
+
+.pilot-field-control {
+	flex: 1;
+	min-width: 0;
+}
+
+.pilot-field-suffix {
+	font-size: 13px;
+	color: var(--pilot-gray-500);
+}
+
+/* =============================================
+   Form Controls
+   ============================================= */
+
+/* Text / Number / Textarea inputs */
+.pilot-input {
+	width: 100%;
+	max-width: 400px;
+	padding: 8px 12px;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	font-size: 14px;
+	font-family: var(--pilot-font-family);
+	color: var(--pilot-gray-800);
+	background: #fff;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	box-sizing: border-box;
+}
+
+.pilot-input:focus {
+	border-color: var(--pilot-border-focus);
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+.pilot-input::placeholder {
+	color: var(--pilot-gray-400);
+}
+
+.pilot-input-small {
+	width: 90px;
+	max-width: 90px;
+}
+
+.pilot-textarea {
+	max-width: 100%;
+	resize: vertical;
+	min-height: 80px;
+}
+
+/* Select */
+.pilot-select {
+	padding: 8px 12px;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	font-size: 14px;
+	font-family: var(--pilot-font-family);
+	color: var(--pilot-gray-800);
+	background: #fff;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	max-width: 400px;
+}
+
+.pilot-select:focus {
+	border-color: var(--pilot-border-focus);
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+/* Checkbox label */
+.pilot-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	color: var(--pilot-gray-700);
+	padding-top: 7px;
+}
+
+.pilot-checkbox-label input[type="checkbox"] {
+	margin: 0;
+	width: 16px;
+	height: 16px;
+	accent-color: var(--pilot-primary);
+}
+
+/* =============================================
+   Sub-settings (inside module card body)
+   ============================================= */
+
+.pilot-sub-setting {
+	display: block;
+	padding: 7px 0;
+	cursor: pointer;
+	font-size: 13px;
+	color: var(--pilot-gray-700);
+	line-height: 1.4;
+}
+
+.pilot-sub-setting:first-child {
+	padding-top: 0;
+}
+
+.pilot-sub-setting input[type="checkbox"] {
+	margin-right: 6px;
+	accent-color: var(--pilot-primary);
+}
+
+.pilot-sub-setting:hover {
+	color: var(--pilot-gray-900);
+}
+
+.pilot-sub-number {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 7px 0;
+	font-size: 13px;
+	color: var(--pilot-gray-700);
+}
+
+.pilot-sub-number label {
+	min-width: 280px;
+	cursor: pointer;
+}
+
+.pilot-sub-number input[type="number"] {
+	width: 80px;
+	padding: 6px 8px;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	font-size: 13px;
+	text-align: center;
+}
+
+.pilot-sub-number input[type="number"]:focus {
+	border-color: var(--pilot-border-focus);
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+/* Divider between sub-checkboxes and sub-numbers */
+.pilot-sub-number:first-of-type {
+	margin-top: 8px;
+	padding-top: 12px;
+	border-top: 1px dashed var(--pilot-gray-200);
+}
+
+/* =============================================
+   Code Block
+   ============================================= */
+
+.pilot-code-block {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background: var(--pilot-gray-50);
+	border: 1px solid var(--pilot-gray-200);
+	border-radius: var(--pilot-radius-sm);
+	max-width: fit-content;
+}
+
+.pilot-code-block code {
+	font-family: var(--pilot-font-mono);
+	font-size: 12px;
+	color: var(--pilot-gray-700);
+	word-break: break-all;
+}
+
+/* =============================================
+   Badges
+   ============================================= */
+
+.pilot-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 10px;
+	border-radius: var(--pilot-radius-full);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.2px;
+	white-space: nowrap;
+	line-height: 1.6;
+}
+
+.pilot-badge-success {
+	background: var(--pilot-success-light);
+	color: var(--pilot-success);
+}
+
+.pilot-badge-warning {
+	background: var(--pilot-warning-light);
+	color: var(--pilot-warning);
+}
+
+.pilot-badge-error {
+	background: var(--pilot-error-light);
+	color: var(--pilot-error);
+}
+
+.pilot-badge-info {
+	background: var(--pilot-primary-light);
+	color: var(--pilot-primary);
+}
+
+/* =============================================
+   Alerts
+   ============================================= */
+
+.pilot-alert {
+	padding: 12px 16px;
+	border-radius: var(--pilot-radius-md);
+	margin: 0 0 16px;
+	font-size: 13px;
+	line-height: 1.5;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pilot-alert-success {
+	background: var(--pilot-success-light);
+	color: #065f46;
+	border: 1px solid #a7f3d0;
+}
+
+.pilot-alert-warning {
+	background: var(--pilot-warning-light);
+	color: #92400e;
+	border: 1px solid #fde68a;
+}
+
+.pilot-alert-error {
+	background: var(--pilot-error-light);
+	color: #991b1b;
+	border: 1px solid #fecaca;
+}
+
+.pilot-alert-info {
+	background: var(--pilot-info-light);
+	color: #075985;
+	border: 1px solid #bae6fd;
+}
+
+/* =============================================
+   Test Connection
+   ============================================= */
+
+.pilot-test-connection {
+	vertical-align: middle;
+}
+
+.pilot-test-result {
+	display: inline-block;
+	margin-left: 8px;
+	font-size: 13px;
+	vertical-align: middle;
+	transition: color 0.2s ease;
+}
+
+.pilot-test-result.success {
+	color: var(--pilot-success);
+	font-weight: 500;
+}
+
+.pilot-test-result.error {
+	color: var(--pilot-error);
+	font-weight: 500;
+}
+
+/* =============================================
+   Submit Row
+   ============================================= */
+
+.pilot-submit-row {
+	margin-top: 8px;
+}
+
+.pilot-submit-row .button-primary {
+	background: var(--pilot-primary);
+	border-color: var(--pilot-primary);
+	box-shadow: none;
+	text-shadow: none;
+	border-radius: var(--pilot-radius-sm);
+	padding: 6px 20px;
+	font-size: 13px;
+	font-weight: 500;
+	height: auto;
+	line-height: 1.6;
+}
+
+.pilot-submit-row .button-primary:hover,
+.pilot-submit-row .button-primary:focus {
+	background: var(--pilot-primary-hover);
+	border-color: var(--pilot-primary-hover);
+}
+
+/* =============================================
+   Inline Field (input + button side by side)
+   ============================================= */
+
+.pilot-inline-field {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pilot-inline-field .pilot-input {
+	flex: 1;
+}
+
+/* =============================================
+   Color Picker
+   ============================================= */
+
+.pilot-field-row .wp-picker-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* =============================================
+   Data Table
+   ============================================= */
+
+/* --- Unified wrapper: toolbar + table + pagination in one container --- */
+.pilot-datagrid {
+	background: var(--pilot-bg-card);
+	border: 1px solid var(--pilot-border);
+	border-radius: var(--pilot-radius-lg);
+	overflow: hidden;
+	box-shadow: var(--pilot-shadow-md);
+	margin: 0 0 16px;
+}
+
+.pilot-datagrid .pilot-toolbar {
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	border-bottom: 1px solid var(--pilot-border);
+	margin: 0;
+}
+
+.pilot-datagrid .pilot-table {
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	margin: 0;
+}
+
+.pilot-datagrid .pilot-toolbar:last-child {
+	border-bottom: none;
+	border-top: 1px solid var(--pilot-border);
+}
+
+/* --- Standalone table (no datagrid wrapper) --- */
+.pilot-table {
+	background: var(--pilot-bg-card);
+	border: 1px solid var(--pilot-border);
+	border-radius: var(--pilot-radius-lg);
+	overflow: hidden;
+	box-shadow: var(--pilot-shadow-md);
+	margin: 0 0 16px;
+}
+
+.pilot-table .wp-list-table {
+	border: none;
+	margin: 0;
+	border-collapse: collapse;
+}
+
+.pilot-table .wp-list-table thead th,
+.pilot-table .wp-list-table thead td {
+	background: var(--pilot-gray-50);
+	border-bottom: 1px solid var(--pilot-border);
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--pilot-gray-500);
+	padding: 10px 14px;
+}
+
+.pilot-table .wp-list-table thead td.check-column {
+	padding: 10px 10px 10px 14px;
+}
+
+.pilot-table .wp-list-table tbody td,
+.pilot-table .wp-list-table tbody th {
+	padding: 12px 14px;
+	vertical-align: middle;
+	border-bottom: 1px solid var(--pilot-gray-100);
+	color: var(--pilot-gray-700);
+	font-size: 13px;
+}
+
+.pilot-table .wp-list-table tbody tr:last-child td,
+.pilot-table .wp-list-table tbody tr:last-child th {
+	border-bottom: none;
+}
+
+/* Remove WP striped rows, use hover */
+.pilot-table .wp-list-table.striped > tbody > :nth-child(odd) {
+	background: transparent;
+}
+
+.pilot-table .wp-list-table tbody tr:hover {
+	background: var(--pilot-gray-50);
+}
+
+/* Code blocks in tables */
+.pilot-table code {
+	background: var(--pilot-gray-100);
+	padding: 3px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-family: var(--pilot-font-mono);
+	color: var(--pilot-gray-700);
+	border: none;
+}
+
+/* --- Toolbar (standalone, outside datagrid) --- */
+.pilot-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 20px;
+	background: var(--pilot-bg-card);
+	border: 1px solid var(--pilot-border);
+	border-radius: var(--pilot-radius-lg);
+	margin: 0 0 16px;
+	flex-wrap: wrap;
+	box-shadow: var(--pilot-shadow-md);
+}
+
+.pilot-toolbar-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.pilot-toolbar .pilot-search {
+	padding: 0 12px;
+	height: 30px;
+	line-height: 30px;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	font-size: 13px;
+	min-width: 220px;
+	box-sizing: border-box;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pilot-toolbar .pilot-search:focus {
+	border-color: var(--pilot-border-focus);
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+/* Connected search group: input + button */
+.pilot-toolbar .pilot-search-group {
+	display: inline-flex;
+	align-items: stretch;
+}
+.pilot-toolbar .pilot-search-group .pilot-search {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+	border-right: none;
+	min-width: 180px;
+}
+.pilot-toolbar .pilot-search-group .pilot-search:focus {
+	z-index: 1;
+	position: relative;
+}
+.pilot-toolbar .pilot-search-group .pilot-search-btn {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}
+
+/* Search button */
+.pilot-toolbar .pilot-search-btn {
+	height: 30px;
+	width: 34px;
+	padding: 0;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	background: var(--pilot-primary);
+	color: #fff;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	transition: background 0.15s ease;
+	box-shadow: none;
+}
+.pilot-toolbar .pilot-search-btn:hover {
+	background: var(--pilot-primary-hover);
+	border-color: var(--pilot-primary-hover);
+}
+.pilot-toolbar .pilot-search-btn:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+.pilot-toolbar .pilot-search-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+}
+
+/* Pagination inside toolbar */
+.pilot-pagination {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 13px;
+	color: var(--pilot-gray-500);
+}
+
+.pilot-pagination .button {
+	min-width: 32px;
+	height: 32px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--pilot-radius-sm);
+	font-size: 14px;
+}
+
+.pilot-pagination .current-page {
+	width: 44px;
+	height: 32px;
+	text-align: center;
+	border: 1px solid var(--pilot-gray-300);
+	border-radius: var(--pilot-radius-sm);
+	font-size: 13px;
+}
+
+.pilot-pagination .current-page:focus {
+	border-color: var(--pilot-border-focus);
+	box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+	outline: none;
+}
+
+/* Item count label */
+.pilot-item-count {
+	font-size: 13px;
+	color: var(--pilot-gray-500);
+	font-weight: 500;
+}
+
+/* Add-form card (for Blocked/Whitelisted IPs) */
+.pilot-add-form {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 20px;
+	background: var(--pilot-bg-card);
+	border: 1px solid var(--pilot-border);
+	border-radius: var(--pilot-radius-lg);
+	margin: 0 0 16px;
+	box-shadow: var(--pilot-shadow-md);
+}
+
+.pilot-add-form .pilot-input {
+	max-width: 240px;
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+
+@media (max-width: 960px) {
+	.pilot-field-row {
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.pilot-field-label {
+		width: 100%;
+		padding-top: 0;
+	}
+
+	.pilot-sub-number {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+	}
+
+	.pilot-sub-number label {
+		min-width: auto;
+	}
+}
+
+@media (max-width: 782px) {
+	.pilot-tabs {
+		flex-wrap: wrap;
+	}
+
+	.pilot-card-header {
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.pilot-input {
+		max-width: 100%;
+	}
+}

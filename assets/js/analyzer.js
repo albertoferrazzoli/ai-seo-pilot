@@ -26,9 +26,9 @@
 	var NONCE    = (window.aiSeoPilotAnalyzer && window.aiSeoPilotAnalyzer.nonce) || '';
 
 	function getStatusColor(status) {
-		if (status === 'good') return '#00a32a';
-		if (status === 'warning') return '#dba617';
-		return '#d63638';
+		if (status === 'good') return '#10b981';
+		if (status === 'warning') return '#f59e0b';
+		return '#f43f5e';
 	}
 
 	function ScoreCircle(props) {
@@ -36,9 +36,9 @@
 		var score = props.score || 0;
 		var maxScore = props.maxScore || 100;
 		var color;
-		if (percentage >= 75) color = '#00a32a';
-		else if (percentage >= 50) color = '#dba617';
-		else color = '#d63638';
+		if (percentage >= 75) color = '#10b981';
+		else if (percentage >= 50) color = '#f59e0b';
+		else color = '#f43f5e';
 
 		var size = 80;
 		var strokeWidth = 6;
@@ -63,7 +63,7 @@
 				}),
 				el('text', {
 					x: '50%', y: '50%', textAnchor: 'middle', dominantBaseline: 'central',
-					fontSize: '22', fontWeight: '700', fill: '#1d2327'
+					fontSize: '22', fontWeight: '700', fill: '#111827'
 				}, percentage + '%')
 			),
 			el('span', {
@@ -80,8 +80,8 @@
 				el('span', {
 					style: {
 						fontWeight: 600, padding: '2px 6px', borderRadius: 3, fontSize: 11,
-						background: check.status === 'good' ? '#d4edda' : check.status === 'warning' ? '#fff3cd' : '#f8d7da',
-						color: check.status === 'good' ? '#155724' : check.status === 'warning' ? '#856404' : '#721c24'
+						background: check.status === 'good' ? '#ecfdf5' : check.status === 'warning' ? '#fffbeb' : '#fff1f2',
+						color: check.status === 'good' ? '#059669' : check.status === 'warning' ? '#d97706' : '#e11d48'
 					}
 				}, check.score + '/' + check.max)
 			),
@@ -115,17 +115,17 @@
 			inner = el('div', { style: { textAlign: 'center', padding: 12 } }, el(Spinner));
 		} else if (data && data.score !== undefined) {
 			var sc = data.score || 0;
-			var clr = sc >= 70 ? '#00a32a' : (sc >= 40 ? '#dba617' : '#d63638');
+			var clr = sc >= 70 ? '#10b981' : (sc >= 40 ? '#f59e0b' : '#f43f5e');
 			var items = [];
 			items.push(el('div', { key: 'sc', className: 'aisp-panel-score' },
 				el('span', { className: 'score-num', style: { color: clr } }, sc + '/100'),
-				data.level ? el('div', { style: { fontSize: 12, color: '#646970', marginTop: 2 } }, data.level) : null
+				data.level ? el('div', { style: { fontSize: 12, color: '#6b7280', marginTop: 2 } }, data.level) : null
 			));
 			if (data.suggestions && data.suggestions.length) {
 				data.suggestions.forEach(function (s, i) {
 					var text = typeof s === 'string' ? s : (s.text || s.suggestion || JSON.stringify(s));
 					items.push(el('div', { key: 'sg' + i, className: 'aisp-suggestion-item' },
-						el('span', { style: { color: '#1d2327' } }, '• '), text
+						el('span', { style: { color: '#111827' } }, '• '), text
 					));
 				});
 			}
@@ -205,7 +205,7 @@
 		));
 
 		if (status) {
-			items.push(el('div', { key: 'st', style: { fontSize: 12, color: status === 'Saved!' ? '#00a32a' : '#d63638', marginBottom: 8 } }, status));
+			items.push(el('div', { key: 'st', style: { fontSize: 12, color: status === 'Saved!' ? '#10b981' : '#f43f5e', marginBottom: 8 } }, status));
 		}
 
 		if (loading) {
@@ -220,7 +220,7 @@
 					var score = kw.relevance_score ? ' (' + Math.round(kw.relevance_score * 100) + '%)' : '';
 					return el('div', {
 						key: 'kw' + i,
-						style: { fontSize: 12, padding: '3px 0', cursor: 'pointer', color: '#2271b1' },
+						style: { fontSize: 12, padding: '3px 0', cursor: 'pointer', color: '#6366f1' },
 						onClick: function () { setKeyword(kwText); },
 						title: 'Click to set as focus keyword'
 					}, '• ' + kwText + score);
@@ -229,11 +229,11 @@
 		}
 
 		if (usage) {
-			items.push(el('div', { key: 'usage', style: { marginTop: 8, padding: 8, background: '#f0f0f1', borderRadius: 4, fontSize: 12 } },
+			items.push(el('div', { key: 'usage', style: { marginTop: 8, padding: 8, background: '#f3f4f6', borderRadius: 4, fontSize: 12 } },
 				el('strong', null, 'Keyword Usage'),
 				usage.density !== undefined ? el('div', { style: { marginTop: 4 } }, 'Density: ' + usage.density) : null,
 				usage.distribution ? el('div', null, 'Distribution: ' + usage.distribution) : null,
-				usage.suggestions ? el('div', { style: { marginTop: 4, color: '#646970' } },
+				usage.suggestions ? el('div', { style: { marginTop: 4, color: '#6b7280' } },
 					(Array.isArray(usage.suggestions) ? usage.suggestions : [usage.suggestions]).map(function (s, i) {
 						return el('div', { key: 'us' + i }, '• ' + (typeof s === 'string' ? s : JSON.stringify(s)));
 					})
@@ -272,7 +272,7 @@
 		} else if (links !== null) {
 			if (links.length === 0) {
 				inner = el(Fragment, null,
-					el('p', { style: { fontSize: 12, color: '#646970' } }, msg || 'No suggestions found.'),
+					el('p', { style: { fontSize: 12, color: '#6b7280' } }, msg || 'No suggestions found.'),
 					el(Button, { isLink: true, onClick: findLinks, style: { fontSize: 11 } }, 'Try again')
 				);
 			} else {
@@ -281,8 +281,8 @@
 						el('div', null,
 							el('a', { href: lk.url, target: '_blank', style: { fontWeight: 600 } }, lk.anchor_text || lk.url)
 						),
-						lk.reason ? el('div', { style: { color: '#646970', marginTop: 2 } }, lk.reason) : null,
-						lk.where ? el('div', { style: { color: '#2271b1', marginTop: 2, fontStyle: 'italic' } }, '→ ' + lk.where) : null
+						lk.reason ? el('div', { style: { color: '#6b7280', marginTop: 2 } }, lk.reason) : null,
+						lk.where ? el('div', { style: { color: '#6366f1', marginTop: 2, fontStyle: 'italic' } }, '→ ' + lk.where) : null
 					);
 				});
 				items.push(el(Button, { key: 're', isLink: true, onClick: findLinks, style: { marginTop: 8, fontSize: 11 } }, 'Refresh'));
@@ -350,27 +350,27 @@
 		}
 
 		if (statusMsg) {
-			items.push(el('div', { key: 'msg', style: { fontSize: 12, color: '#646970', marginBottom: 8 } }, statusMsg));
+			items.push(el('div', { key: 'msg', style: { fontSize: 12, color: '#6b7280', marginBottom: 8 } }, statusMsg));
 		}
 
 		if (improvements && improvements.length) {
 			improvements.forEach(function (imp, i) {
-				var pColor = imp.priority === 'high' ? '#d63638' : (imp.priority === 'medium' ? '#dba617' : '#2271b1');
+				var pColor = imp.priority === 'high' ? '#f43f5e' : (imp.priority === 'medium' ? '#f59e0b' : '#6366f1');
 				items.push(el('div', { key: 'imp' + i, className: 'aisp-improvement' },
 					el('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-						el('strong', { style: { color: '#1d2327' } }, imp.title || 'Suggestion ' + (i + 1)),
+						el('strong', { style: { color: '#111827' } }, imp.title || 'Suggestion ' + (i + 1)),
 						imp.priority ? el('span', {
 							style: { fontSize: 10, padding: '1px 6px', borderRadius: 3, background: pColor + '20', color: pColor }
 						}, imp.priority) : null
 					),
-					el('div', { style: { color: '#646970', marginTop: 2 } }, imp.description || '')
+					el('div', { style: { color: '#6b7280', marginTop: 2 } }, imp.description || '')
 				));
 			});
 		}
 
 		items.push(el('hr', { key: 'sep', style: { margin: '12px 0', border: 'none', borderTop: '1px solid #e0e0e0' } }));
 
-		items.push(el('div', { key: 'slbl', style: { fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#1d2327' } }, 'Generate Section'));
+		items.push(el('div', { key: 'slbl', style: { fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#111827' } }, 'Generate Section'));
 		var sectionTypes = [
 			{ value: 'faq', label: 'FAQ' },
 			{ value: 'statistics', label: 'Statistics' },
@@ -471,8 +471,8 @@
 						style: {
 							display: 'inline-block', padding: '4px 12px', borderRadius: 12,
 							fontSize: 12, fontWeight: 600,
-							background: result.ai_ready ? '#d4edda' : '#f8d7da',
-							color: result.ai_ready ? '#155724' : '#721c24'
+							background: result.ai_ready ? '#ecfdf5' : '#fff1f2',
+							color: result.ai_ready ? '#059669' : '#e11d48'
 						}
 					}, result.ai_ready ? 'AI-Ready' : 'Needs Improvement')
 				),

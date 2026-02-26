@@ -57,20 +57,20 @@ if ( $scanned > 0 ) {
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--green dashicons dashicons-awards"></span>
 			<h3><?php esc_html_e( 'Avg Quality', 'ai-seo-pilot' ); ?></h3>
-			<?php $avg_color = $avg_quality >= 70 ? '#00a32a' : ( $avg_quality >= 40 ? '#dba617' : '#d63638' ); ?>
+			<?php $avg_color = $avg_quality >= 70 ? '#10b981' : ( $avg_quality >= 40 ? '#f59e0b' : '#f43f5e' ); ?>
 			<span class="stat-number" style="color:<?php echo esc_attr( $avg_color ); ?>;"><?php echo esc_html( $avg_quality ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'out of 100 (excl. utility)', 'ai-seo-pilot' ); ?></p>
 		</div>
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--red dashicons dashicons-warning"></span>
 			<h3><?php esc_html_e( 'Thin Content', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:<?php echo $thin_count > 0 ? '#d63638' : '#00a32a'; ?>;"><?php echo esc_html( $thin_count ); ?></span>
+			<span class="stat-number" style="color:<?php echo $thin_count > 0 ? '#f43f5e' : '#10b981'; ?>;"><?php echo esc_html( $thin_count ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'posts below threshold', 'ai-seo-pilot' ); ?></p>
 		</div>
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--gray dashicons dashicons-admin-page"></span>
 			<h3><?php esc_html_e( 'Utility Pages', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:#646970;"><?php echo esc_html( $utility_count ); ?></span>
+			<span class="stat-number" style="color:#6b7280;"><?php echo esc_html( $utility_count ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'excluded from scoring', 'ai-seo-pilot' ); ?></p>
 		</div>
 	</div>
@@ -84,9 +84,9 @@ if ( $scanned > 0 ) {
 		<span id="ai-seo-pilot-scan-status" class="ai-seo-pilot-status" style="margin-left:8px;"></span>
 		<div id="ai-seo-pilot-scan-progress" style="display:none; margin-top:8px;">
 			<div style="background:#e0e0e0; border-radius:4px; height:20px; overflow:hidden;">
-				<div id="ai-seo-pilot-progress-bar" style="background:#2271b1; height:100%; width:0%; transition:width 0.3s; border-radius:4px;"></div>
+				<div id="ai-seo-pilot-progress-bar" style="background:#6366f1; height:100%; width:0%; transition:width 0.3s; border-radius:4px;"></div>
 			</div>
-			<span id="ai-seo-pilot-progress-text" style="font-size:12px; color:#646970; margin-top:4px; display:block;"></span>
+			<span id="ai-seo-pilot-progress-text" style="font-size:12px; color:#6b7280; margin-top:4px; display:block;"></span>
 		</div>
 	</div>
 	<?php endif; ?>
@@ -111,25 +111,25 @@ if ( $scanned > 0 ) {
 					$is_utility = isset( $utility_ids[ $sp->post_id ] );
 
 					if ( $is_utility ) {
-						$color        = '#646970';
+						$color        = '#6b7280';
 						$status_label = __( 'Utility', 'ai-seo-pilot' );
 						$status_bg    = '#e0e6ed';
 						$status_color = '#3c434a';
 					} elseif ( $score >= 70 ) {
-						$color        = '#00a32a';
+						$color        = '#10b981';
 						$status_label = __( 'Good', 'ai-seo-pilot' );
-						$status_bg    = '#d4edda';
-						$status_color = '#155724';
+						$status_bg    = '#ecfdf5';
+						$status_color = '#059669';
 					} elseif ( $score >= 40 ) {
-						$color        = '#dba617';
+						$color        = '#f59e0b';
 						$status_label = __( 'Needs Work', 'ai-seo-pilot' );
-						$status_bg    = '#fff3cd';
-						$status_color = '#856404';
+						$status_bg    = '#fffbeb';
+						$status_color = '#d97706';
 					} else {
-						$color        = '#d63638';
+						$color        = '#f43f5e';
 						$status_label = __( 'Thin', 'ai-seo-pilot' );
-						$status_bg    = '#f8d7da';
-						$status_color = '#721c24';
+						$status_bg    = '#fff1f2';
+						$status_color = '#e11d48';
 					}
 				?>
 				<tr>
@@ -138,7 +138,7 @@ if ( $scanned > 0 ) {
 							<?php echo esc_html( $sp->post_title ); ?>
 						</a>
 					</td>
-					<td style="color:#646970;"><?php echo esc_html( $sp->post_type ); ?></td>
+					<td style="color:#6b7280;"><?php echo esc_html( $sp->post_type ); ?></td>
 					<td>
 						<strong style="color:<?php echo esc_attr( $color ); ?>;"><?php echo esc_html( round( $score ) ); ?>/100</strong>
 					</td>
@@ -147,7 +147,7 @@ if ( $scanned > 0 ) {
 							<?php echo esc_html( $status_label ); ?>
 						</span>
 					</td>
-					<td style="color:#646970; font-size:12px; white-space:nowrap;">
+					<td style="color:#6b7280; font-size:12px; white-space:nowrap;">
 						<?php echo esc_html( mysql2date( 'Y-m-d H:i', $sp->scanned_at ) ); ?>
 					</td>
 				</tr>
@@ -184,7 +184,7 @@ if ( $scanned > 0 ) {
 						echo wp_kses_post( implode( ', ', $links ) );
 						?>
 					</td>
-					<td style="text-align:center; font-weight:600; color:#d63638;">
+					<td style="text-align:center; font-weight:600; color:#f43f5e;">
 						<?php echo esc_html( $dm->count ); ?>
 					</td>
 				</tr>

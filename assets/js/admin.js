@@ -4,50 +4,14 @@
 (function ($) {
 	'use strict';
 
-	/* ── Tab Switching ─────────────────────────────────────── */
-	var STORAGE_KEY = 'ai_seo_pilot_active_tab';
-
-	function activateTab(tab) {
-		var $tab = $('.ai-seo-pilot-tabs .nav-tab[data-tab="' + tab + '"]');
-		if (!$tab.length) return false;
-
-		$('.ai-seo-pilot-tabs .nav-tab').removeClass('nav-tab-active');
-		$tab.addClass('nav-tab-active');
-
-		$('.ai-seo-pilot-tab-content').removeClass('active').hide();
-		$('#tab-' + tab).addClass('active').show();
-
-		try { localStorage.setItem(STORAGE_KEY, tab); } catch (e) {}
-		if (history.replaceState) {
-			history.replaceState(null, null, '#' + tab);
-		}
-		return true;
-	}
-
-	$(document).on('click', '.ai-seo-pilot-tabs .nav-tab', function (e) {
-		e.preventDefault();
-		activateTab($(this).data('tab'));
-	});
-
-	$(function () {
-		if (!$('.ai-seo-pilot-tabs').length) return;
-
-		var hash = window.location.hash.replace('#', '');
-		var saved = '';
-		try { saved = localStorage.getItem(STORAGE_KEY) || ''; } catch (e) {}
-
-		var target = hash || saved;
-		if (target) {
-			activateTab(target);
-		}
-	});
+	/* Tab switching is handled by pilot-admin-ui.js */
 
 	/* ── Model Select + Custom Input Sync ─────────────────── */
 	$(document).on('change', '.aisp-model-select', function () {
 		var $select = $(this);
 		var targetId = $select.data('target');
 		var $hidden = $('#' + targetId);
-		var $custom = $select.closest('td').find('.aisp-model-custom');
+		var $custom = $select.closest('.pilot-field-control, td').find('.aisp-model-custom');
 		var val = $select.val();
 
 		if (val === '__custom__') {
@@ -61,7 +25,7 @@
 
 	$(document).on('input', '.aisp-model-custom', function () {
 		var $custom = $(this);
-		var $hidden = $custom.closest('td').find('input[type="hidden"]');
+		var $hidden = $custom.closest('.pilot-field-control, td').find('input[type="hidden"]');
 		$hidden.val($custom.val());
 	});
 
@@ -232,7 +196,7 @@
 						$list.html('<div style="font-size:12px; white-space:pre-wrap; background:#f0f0f1; padding:8px; border-radius:3px;">' +
 							$('<span>').text(response.data.raw).html() + '</div>');
 					} else {
-						$list.html('<p style="font-size:12px; color:#646970;">No suggestions generated.</p>');
+						$list.html('<p style="font-size:12px; color:#6b7280;">No suggestions generated.</p>');
 					}
 					$list.show();
 					$status.text('Done').attr('class', 'ai-seo-pilot-status success');
@@ -240,18 +204,18 @@
 				}
 
 				var html = '';
-				var priorityColors = { high: '#d63638', medium: '#dba617', low: '#2271b1' };
+				var priorityColors = { high: '#f43f5e', medium: '#f59e0b', low: '#6366f1' };
 
 				for (var i = 0; i < suggestions.length; i++) {
 					var s = suggestions[i];
-					var color = priorityColors[s.priority] || '#646970';
+					var color = priorityColors[s.priority] || '#6b7280';
 					html += '<div style="padding:6px 0; border-bottom:1px solid #e0e0e0; font-size:12px;">';
 					html += '<div style="display:flex; justify-content:space-between; align-items:center;">';
 					html += '<strong>' + $('<span>').text(s.title).html() + '</strong>';
 					html += '<span style="font-size:10px; padding:1px 6px; border-radius:3px; background:' + color + '20; color:' + color + ';">' +
 						$('<span>').text(s.priority).html() + '</span>';
 					html += '</div>';
-					html += '<div style="color:#646970; margin-top:2px;">' + $('<span>').text(s.description).html() + '</div>';
+					html += '<div style="color:#6b7280; margin-top:2px;">' + $('<span>').text(s.description).html() + '</div>';
 					html += '</div>';
 				}
 
@@ -401,11 +365,11 @@
 			var color;
 
 			if (score >= 75) {
-				color = '#00a32a';
+				color = '#10b981';
 			} else if (score >= 50) {
-				color = '#dba617';
+				color = '#f59e0b';
 			} else {
-				color = '#d63638';
+				color = '#f43f5e';
 			}
 
 			this.style.setProperty('--score-pct', score);
@@ -450,8 +414,8 @@
 				datasets: [{
 					label: 'AI Bot Visits',
 					data: data.values,
-					borderColor: '#2271b1',
-					backgroundColor: 'rgba(34, 113, 177, 0.1)',
+					borderColor: '#6366f1',
+					backgroundColor: 'rgba(99, 102, 241, 0.08)',
 					fill: true,
 					tension: 0.3,
 					pointRadius: 2,
@@ -490,7 +454,7 @@
 				labels: ['Good (70+)', 'Needs Work (40-69)', 'Thin (<40)'],
 				datasets: [{
 					data: [d.good, d.needs_work, d.thin],
-					backgroundColor: ['#00a32a', '#dba617', '#d63638'],
+					backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
 					borderWidth: 2,
 					borderColor: '#fff'
 				}]
@@ -514,7 +478,7 @@
 		if (!canvas || !window.aiSeoPilotBotsData) return;
 
 		var d = window.aiSeoPilotBotsData;
-		var colors = ['#2271b1', '#7c3aed', '#00a32a', '#d63638', '#dba617', '#e64980', '#0ea5e9', '#f97316', '#6366f1', '#14b8a6'];
+		var colors = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#8b5cf6', '#0ea5e9', '#ec4899', '#f97316', '#14b8a6', '#64748b'];
 
 		new Chart(canvas, {
 			type: 'doughnut',
@@ -573,7 +537,7 @@
 				'<td>' + $('<span>').text(name).html() + '</td>' +
 				'<td>' + $('<span>').text(service).html() + '</td>' +
 				'<td><button type="button" class="button-link ai-seo-pilot-custom-badge" ' +
-					'style="color:#d63638;padding:2px 6px" ' +
+					'style="color:#f43f5e;padding:2px 6px" ' +
 					'data-identifier="' + safeId + '" ' +
 					'onclick="this.closest(\'tr\').remove();' +
 					'document.querySelector(\'.ai-seo-pilot-custom-bot-row[data-identifier=\\x22' + id.replace(/"/g, '') + '\\x22]\')?.remove();">Remove</button></td>' +
@@ -619,14 +583,14 @@
 
 			if (response.success && response.data.keywords) {
 				var keywords = response.data.keywords;
-				var html = '<div style="font-size:11px; margin-bottom:4px; color:#646970;">Click to set as focus:</div>';
+				var html = '<div style="font-size:11px; margin-bottom:4px; color:#6b7280;">Click to set as focus:</div>';
 
 				for (var i = 0; i < keywords.length; i++) {
 					var kw = keywords[i];
 					var text = typeof kw === 'string' ? kw : (kw.keyword || '');
 					var score = kw.relevance_score ? ' (' + Math.round(kw.relevance_score * 100) + '%)' : '';
 					html += '<span class="aisp-keyword-tag" data-keyword="' + $('<span>').text(text).html() + '">' +
-						$('<span>').text(text).html() + '<small style="color:#646970;">' + score + '</small></span>';
+						$('<span>').text(text).html() + '<small style="color:#6b7280;">' + score + '</small></span>';
 				}
 
 				$container.html(html).show();
@@ -674,7 +638,7 @@
 				var suggestions = response.data.suggestions;
 
 				if (!suggestions || !suggestions.length) {
-					$list.html('<p style="font-size:12px; color:#646970;">' +
+					$list.html('<p style="font-size:12px; color:#6b7280;">' +
 						$('<span>').text(response.data.message || 'No suggestions found.').html() + '</p>');
 					$list.show();
 					$status.text('Done').attr('class', 'ai-seo-pilot-status success');
@@ -688,10 +652,10 @@
 					html += '<div><a href="' + $('<span>').text(s.url).html() + '" target="_blank">' +
 						$('<span>').text(s.anchor_text || s.url).html() + '</a></div>';
 					if (s.reason) {
-						html += '<div style="color:#646970; margin-top:2px; font-size:11px;">' + $('<span>').text(s.reason).html() + '</div>';
+						html += '<div style="color:#6b7280; margin-top:2px; font-size:11px;">' + $('<span>').text(s.reason).html() + '</div>';
 					}
 					if (s.where) {
-						html += '<div style="color:#2271b1; margin-top:2px; font-size:11px; font-style:italic;">→ ' + $('<span>').text(s.where).html() + '</div>';
+						html += '<div style="color:#6366f1; margin-top:2px; font-size:11px; font-style:italic;">→ ' + $('<span>').text(s.where).html() + '</div>';
 					}
 					html += '</div>';
 				}
@@ -775,7 +739,7 @@
 			var groups = response.groups || [];
 
 			if (!groups.length) {
-				$results.html('<p style="font-size:12px; color:#646970;">' +
+				$results.html('<p style="font-size:12px; color:#6b7280;">' +
 					$('<span>').text(response.message || 'No cannibalization issues found.').html() + '</p>');
 				$results.show();
 				$status.text('No issues').attr('class', 'ai-seo-pilot-status success');
@@ -796,7 +760,7 @@
 
 				html += '<tr><td><strong>' + $('<span>').text(g.keyword).html() + '</strong></td>' +
 					'<td style="font-size:12px;">' + postLinks + '</td>' +
-					'<td style="font-size:12px; color:#646970;">' + rec + '</td></tr>';
+					'<td style="font-size:12px; color:#6b7280;">' + rec + '</td></tr>';
 			}
 
 			html += '</tbody></table>';

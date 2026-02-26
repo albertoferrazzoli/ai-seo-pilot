@@ -153,7 +153,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 					?>
 				</p>
 			<?php else : ?>
-				<span class="stat-number" style="color:#646970;">—</span>
+				<span class="stat-number" style="color:#6b7280;">—</span>
 				<p class="stat-detail">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-content-quality' ) ); ?>"><?php esc_html_e( 'Run a scan', 'ai-seo-pilot' ); ?></a>
 				</p>
@@ -163,21 +163,21 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--green dashicons dashicons-yes-alt"></span>
 			<h3><?php esc_html_e( 'Good Content', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:#00a32a;"><?php echo esc_html( $good_count ); ?></span>
+			<span class="stat-number" style="color:#10b981;"><?php echo esc_html( $good_count ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'score 70+', 'ai-seo-pilot' ); ?></p>
 		</div>
 
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--red dashicons dashicons-warning"></span>
 			<h3><?php esc_html_e( 'Thin Content', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:<?php echo $thin_count > 0 ? '#d63638' : '#00a32a'; ?>;"><?php echo esc_html( $thin_count ); ?></span>
+			<span class="stat-number" style="color:<?php echo $thin_count > 0 ? '#f43f5e' : '#10b981'; ?>;"><?php echo esc_html( $thin_count ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'needs attention', 'ai-seo-pilot' ); ?></p>
 		</div>
 
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--orange dashicons dashicons-media-text"></span>
 			<h3><?php esc_html_e( 'Duplicate Meta', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:<?php echo count( $duplicate_meta ) > 0 ? '#dba617' : '#00a32a'; ?>;"><?php echo esc_html( count( $duplicate_meta ) ); ?></span>
+			<span class="stat-number" style="color:<?php echo count( $duplicate_meta ) > 0 ? '#f59e0b' : '#10b981'; ?>;"><?php echo esc_html( count( $duplicate_meta ) ); ?></span>
 			<p class="stat-detail"><?php esc_html_e( 'duplicated descriptions', 'ai-seo-pilot' ); ?></p>
 		</div>
 	</div>
@@ -209,7 +209,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 		<div class="ai-seo-pilot-stat-card">
 			<span class="stat-icon stat-icon--orange dashicons dashicons-controls-repeat"></span>
 			<h3><?php esc_html_e( 'Cannibalization', 'ai-seo-pilot' ); ?></h3>
-			<span class="stat-number" style="color:<?php echo $cannibal_groups > 0 ? '#d63638' : '#00a32a'; ?>;"><?php echo esc_html( $cannibal_groups ); ?></span>
+			<span class="stat-number" style="color:<?php echo $cannibal_groups > 0 ? '#f43f5e' : '#10b981'; ?>;"><?php echo esc_html( $cannibal_groups ); ?></span>
 			<p class="stat-detail">
 				<?php echo $cannibal_groups > 0
 					? esc_html__( 'keyword conflicts', 'ai-seo-pilot' )
@@ -226,12 +226,12 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 				$providers    = $plugin->ai_engine->get_providers();
 				$provider_lbl = isset( $providers[ $provider_key ] ) ? $providers[ $provider_key ]['label'] : $provider_key;
 			?>
-				<span class="stat-number" style="font-size:20px; color:#00a32a;">
+				<span class="stat-number" style="font-size:20px; color:#10b981;">
 					<span class="dashicons dashicons-yes-alt" style="font-size:20px; width:20px; height:20px; vertical-align:middle;"></span>
 				</span>
 				<p class="stat-detail"><?php echo esc_html( $provider_lbl ); ?></p>
 			<?php else : ?>
-				<span class="stat-number" style="font-size:20px; color:#d63638;">
+				<span class="stat-number" style="font-size:20px; color:#f43f5e;">
 					<span class="dashicons dashicons-warning" style="font-size:20px; width:20px; height:20px; vertical-align:middle;"></span>
 				</span>
 				<p class="stat-detail">
@@ -270,7 +270,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 				</thead>
 				<tbody>
 					<?php foreach ( $worst_posts as $wp_item ) :
-						$c = $wp_item['score'] >= 70 ? '#00a32a' : ( $wp_item['score'] >= 40 ? '#dba617' : '#d63638' );
+						$c = $wp_item['score'] >= 70 ? '#10b981' : ( $wp_item['score'] >= 40 ? '#f59e0b' : '#f43f5e' );
 					?>
 					<tr>
 						<td><?php echo esc_html( $wp_item['title'] ); ?></td>
@@ -293,7 +293,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 				</thead>
 				<tbody>
 					<?php foreach ( $best_posts as $bp_item ) :
-						$c = $bp_item['score'] >= 70 ? '#00a32a' : ( $bp_item['score'] >= 40 ? '#dba617' : '#d63638' );
+						$c = $bp_item['score'] >= 70 ? '#10b981' : ( $bp_item['score'] >= 40 ? '#f59e0b' : '#f43f5e' );
 					?>
 					<tr>
 						<td><?php echo esc_html( $bp_item['title'] ); ?></td>
@@ -322,7 +322,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 					) ); ?>;
 				</script>
 			<?php else : ?>
-				<p style="text-align:center; color:#646970; padding:40px 0;">
+				<p style="text-align:center; color:#6b7280; padding:40px 0;">
 					<?php esc_html_e( 'No content scanned yet.', 'ai-seo-pilot' ); ?>
 					<br>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-seo-pilot-content-quality' ) ); ?>"><?php esc_html_e( 'Run Content Quality scan', 'ai-seo-pilot' ); ?></a>
@@ -343,7 +343,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 					) ); ?>;
 				</script>
 			<?php else : ?>
-				<p style="text-align:center; color:#646970; padding:40px 0;">
+				<p style="text-align:center; color:#6b7280; padding:40px 0;">
 					<?php esc_html_e( 'No AI bot visits recorded yet.', 'ai-seo-pilot' ); ?>
 				</p>
 			<?php endif; ?>
@@ -372,7 +372,7 @@ $needs_work_count = $content_count - $thin_count - $good_count;
 						<?php endforeach; ?>
 					<?php else : ?>
 						<tr>
-							<td colspan="3" style="color:#646970;"><?php esc_html_e( 'No pages crawled yet.', 'ai-seo-pilot' ); ?></td>
+							<td colspan="3" style="color:#6b7280;"><?php esc_html_e( 'No pages crawled yet.', 'ai-seo-pilot' ); ?></td>
 						</tr>
 					<?php endif; ?>
 				</tbody>

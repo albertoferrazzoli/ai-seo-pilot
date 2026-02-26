@@ -59,7 +59,7 @@ wp_nonce_field( 'ai_seo_pilot_save_keyword', '_ai_seo_pilot_keyword_nonce' );
 	placeholder="<?php esc_attr_e( 'AI-generated meta description will appear here...', 'ai-seo-pilot' ); ?>"
 ><?php echo esc_textarea( $meta_desc ); ?></textarea>
 <p style="margin:4px 0;">
-	<span id="ai-seo-pilot-meta-chars" style="font-size:11px; color:#646970;">
+	<span id="ai-seo-pilot-meta-chars" style="font-size:11px; color:#6b7280;">
 		<?php echo esc_html( mb_strlen( $meta_desc ) ); ?>/160
 	</span>
 	<?php if ( $ai_configured ) : ?>
@@ -130,5 +130,5 @@ wp_nonce_field( 'ai_seo_pilot_save_keyword', '_ai_seo_pilot_keyword_nonce' );
 	<summary style="cursor:pointer; font-weight:600; font-size:12px;">
 		<?php esc_html_e( 'JSON-LD Preview', 'ai-seo-pilot' ); ?>
 	</summary>
-	<pre style="max-height:200px; overflow:auto; font-size:11px; background:#f0f0f1; padding:8px; white-space:pre-wrap; margin-top:8px;"><?php echo esc_html( $schema_json ); ?></pre>
+	<pre style="max-height:200px; overflow:auto; font-size:11px; background:#f3f4f6; padding:8px; white-space:pre-wrap; margin-top:8px;"><?php echo esc_html( $schema_json ); ?></pre>
 </details>

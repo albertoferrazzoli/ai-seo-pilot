@@ -807,20 +807,11 @@ class AI_SEO_Pilot_AI_Engine {
 			}
 		}
 
-		// Sanitize control characters inside JSON string values.
-		// Gemini and other providers sometimes embed raw newlines/tabs
-		// inside strings which break json_decode().
-		$text = preg_replace_callback(
-			'/"(?:[^"\\\\]|\\\\.)*"/s',
-			function ( $match ) {
-				return str_replace(
-					array( "\n", "\r", "\t" ),
-					array( '\\n', '\\r', '\\t' ),
-					$match[0]
-				);
-			},
-			$text
-		);
+		// Replace raw control characters (0x00-0x1F) with spaces.
+		// json_decode() rejects raw newlines, tabs, etc. inside string
+		// values. Structural whitespace (indentation) is also safe to
+		// collapse — JSON doesn't need it.
+		$text = preg_replace( '/[\x00-\x1f]+/', ' ', $text );
 
 		return $text;
 	}

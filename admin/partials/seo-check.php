@@ -137,6 +137,9 @@ foreach ( $checks as $check ) {
 										<button type="button" class="button button-small aisp-fix-btn" data-fix="option_toggle" data-option="<?php echo esc_attr( $action['option'] ); ?>" data-value="<?php echo esc_attr( $action['value'] ); ?>"><?php echo esc_html( $action['label'] ); ?></button>
 									<?php elseif ( 'ajax' === $action['type'] ) : ?>
 										<button type="button" class="button button-small aisp-fix-btn" data-fix="ajax" data-action="<?php echo esc_attr( $action['action'] ); ?>"><?php echo esc_html( $action['label'] ); ?></button>
+									<?php elseif ( 'batch_ajax' === $action['type'] ) : ?>
+										<button type="button" class="button button-small button-primary aisp-fix-btn" data-fix="batch_ajax" data-action="<?php echo esc_attr( $action['action'] ); ?>"><?php echo esc_html( $action['label'] ); ?></button>
+										<span class="aisp-batch-status" style="display:none; margin-left:8px; font-size:12px; color:#666;"></span>
 									<?php endif; ?>
 								<?php endif; ?>
 							</div>

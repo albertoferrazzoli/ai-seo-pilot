@@ -709,11 +709,11 @@ class AI_SEO_Pilot_SEO_Checker {
 				$total_posts,
 				$pct
 			),
-			'fix'        => 'pass' !== $status ? __( 'Set focus keywords in the post editor or use "Extract with AI" to auto-detect them.', 'ai-seo-pilot' ) : '',
+			'fix'        => 'pass' !== $status ? __( 'Auto-extract focus keywords for all posts using AI.', 'ai-seo-pilot' ) : '',
 			'fix_action' => 'pass' !== $status ? array(
-				'type'  => 'link',
-				'url'   => admin_url( 'admin.php?page=ai-seo-pilot-keywords' ),
-				'label' => __( 'View Keywords', 'ai-seo-pilot' ),
+				'type'   => 'batch_ajax',
+				'action' => 'ai_seo_pilot_batch_extract_keywords',
+				'label'  => __( 'Extract All with AI', 'ai-seo-pilot' ),
 			) : null,
 		);
 	}
@@ -841,8 +841,12 @@ class AI_SEO_Pilot_SEO_Checker {
 				count( $recent_posts ),
 				$orphan_count
 			),
-			'fix'        => 'pass' !== $status ? __( 'Use "Find Links with AI" in the post editor to get AI-powered internal link suggestions.', 'ai-seo-pilot' ) : '',
-			'fix_action' => null,
+			'fix'        => 'pass' !== $status ? __( 'Auto-insert internal links into orphan posts using AI.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'   => 'batch_ajax',
+				'action' => 'ai_seo_pilot_batch_internal_links',
+				'label'  => __( 'Fix with AI', 'ai-seo-pilot' ),
+			) : null,
 		);
 	}
 }

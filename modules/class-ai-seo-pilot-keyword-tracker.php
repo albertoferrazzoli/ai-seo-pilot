@@ -287,6 +287,13 @@ class AI_SEO_Pilot_Keyword_Tracker {
 	/**
 	 * Store extracted keywords in the tracking table.
 	 */
+	public function store_extracted_keywords( $post_id, $keywords ) {
+		$this->store_keywords( $post_id, $keywords );
+	}
+
+	/**
+	 * Store extracted keywords in the tracking table (internal).
+	 */
 	private function store_keywords( $post_id, $keywords ) {
 		global $wpdb;
 		$table = $wpdb->prefix . 'ai_seo_pilot_keyword_tracking';

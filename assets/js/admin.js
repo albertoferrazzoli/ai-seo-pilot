@@ -355,6 +355,55 @@
 			}).fail(function () {
 				$btn.prop('disabled', false).text(originalText);
 			});
+
+		} else if (fixType === 'batch_ajax') {
+			var batchAction = $btn.data('action');
+			var originalText = $btn.text();
+			var $status = $card.find('.aisp-batch-status');
+			var totalProcessed = 0;
+
+			$btn.prop('disabled', true).text('Starting…');
+			$status.show();
+
+			function runBatch(offset) {
+				$.post(aiSeoPilot.ajaxUrl, {
+					action: batchAction,
+					nonce: aiSeoPilot.nonce,
+					offset: offset
+				}, function (response) {
+					if (response.success) {
+						var d = response.data;
+						totalProcessed += d.processed;
+						var done = offset + (d.processed || 1);
+						var pct = d.total > 0 ? Math.min(100, Math.round(done / d.total * 100)) : 100;
+						$btn.text(pct + '%');
+						$status.text(totalProcessed + ' / ' + d.total + ' processed');
+
+						if (d.complete) {
+							$btn.text('Done (' + totalProcessed + ')').addClass('disabled');
+							$status.hide();
+							$card
+								.removeClass('aisp-check-card--fail aisp-check-card--warning')
+								.addClass('aisp-check-card--pass');
+							$card.find('.aisp-check-icon')
+								.removeClass('aisp-check-icon--fail aisp-check-icon--warning')
+								.addClass('aisp-check-icon--pass')
+								.find('.dashicons')
+								.attr('class', 'dashicons dashicons-yes-alt');
+						} else {
+							runBatch(d.offset + (d.processed || 3));
+						}
+					} else {
+						$btn.prop('disabled', false).text(originalText);
+						$status.text('Error — try again').css('color', '#ef4444');
+					}
+				}).fail(function () {
+					$btn.prop('disabled', false).text(originalText);
+					$status.text('Request failed').css('color', '#ef4444');
+				});
+			}
+
+			runBatch(0);
 		}
 	});
 

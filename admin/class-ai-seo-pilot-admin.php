@@ -38,6 +38,10 @@ class AI_SEO_Pilot_Admin {
 		add_action( 'wp_ajax_ai_seo_pilot_generate_section', array( $this, 'ajax_generate_section' ) );
 		add_action( 'wp_ajax_ai_seo_pilot_adjust_tone', array( $this, 'ajax_adjust_tone' ) );
 
+		// Batch AI fix handlers (SEO Check page).
+		add_action( 'wp_ajax_ai_seo_pilot_batch_extract_keywords', array( $this, 'ajax_batch_extract_keywords' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_batch_internal_links', array( $this, 'ajax_batch_internal_links' ) );
+
 		// Meta boxes.
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
 		add_action( 'save_post', array( $this, 'save_meta_box' ) );
@@ -864,6 +868,141 @@ class AI_SEO_Pilot_Admin {
 		}
 
 		wp_send_json_success( array( 'html' => $result, 'type' => $section_type ) );
+	}
+
+	/**
+	 * Batch extract keywords for all posts without a focus keyword.
+	 */
+	public function ajax_batch_extract_keywords() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+		$batch_size = 3;
+
+		global $wpdb;
+
+		// Get published posts/pages without a focus keyword.
+		$posts = $wpdb->get_results( $wpdb->prepare(
+			"SELECT p.ID FROM {$wpdb->posts} p
+			LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_ai_seo_pilot_focus_keyword'
+			WHERE p.post_type IN ('post','page')
+			AND p.post_status = 'publish'
+			AND (pm.meta_value IS NULL OR pm.meta_value = '')
+			ORDER BY p.ID ASC
+			LIMIT %d OFFSET %d",
+			$batch_size,
+			$offset
+		) );
+
+		$total = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->posts} p
+			LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_ai_seo_pilot_focus_keyword'
+			WHERE p.post_type IN ('post','page')
+			AND p.post_status = 'publish'
+			AND (pm.meta_value IS NULL OR pm.meta_value = '')"
+		);
+
+		$plugin    = AI_SEO_Pilot::get_instance();
+		$processed = 0;
+
+		foreach ( $posts as $row ) {
+			$response = $plugin->ai_engine->extract_keywords( $row->ID );
+			if ( is_wp_error( $response ) ) {
+				continue;
+			}
+
+			$keywords = json_decode( $plugin->ai_engine->clean_json( $response ), true );
+			if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $keywords ) ) {
+				continue;
+			}
+
+			$plugin->keyword_tracker->store_extracted_keywords( $row->ID, $keywords );
+			$processed++;
+		}
+
+		wp_send_json_success( array(
+			'processed' => $processed,
+			'offset'    => $offset,
+			'total'     => $total,
+			'remaining' => max( 0, $total - $offset - $batch_size ),
+			'complete'  => ( $offset + $batch_size ) >= $total,
+		) );
+	}
+
+	/**
+	 * Batch generate internal link suggestions for orphan posts.
+	 */
+	public function ajax_batch_internal_links() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+		$batch_size = 2;
+
+		// Get orphan posts (no internal links).
+		$site_url = home_url();
+		$posts    = get_posts( array(
+			'post_type'      => array( 'post', 'page' ),
+			'post_status'    => 'publish',
+			'posts_per_page' => 50,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+		) );
+
+		$orphans = array();
+		foreach ( $posts as $p ) {
+			$has_internal = preg_match( '/<a[^>]+href=["\']' . preg_quote( $site_url, '/' ) . '/i', $p->post_content )
+				|| preg_match( '/<a[^>]+href=["\']\/[^"\']/i', $p->post_content );
+			if ( ! $has_internal ) {
+				$orphans[] = $p;
+			}
+		}
+
+		$total   = count( $orphans );
+		$batch   = array_slice( $orphans, $offset, $batch_size );
+		$plugin  = AI_SEO_Pilot::get_instance();
+		$results = array();
+
+		foreach ( $batch as $p ) {
+			$suggestions = $plugin->internal_linking->get_suggestions( $p->ID );
+			if ( is_wp_error( $suggestions ) || empty( $suggestions['suggestions'] ) ) {
+				continue;
+			}
+
+			// Auto-insert the top suggestion into the post.
+			$top = $suggestions['suggestions'][0];
+			if ( ! empty( $top['anchor_text'] ) && ! empty( $top['url'] ) ) {
+				$link    = '<a href="' . esc_url( $top['url'] ) . '">' . esc_html( $top['anchor_text'] ) . '</a>';
+				$content = $p->post_content;
+
+				// Insert link by replacing the first occurrence of the anchor text.
+				$pos = mb_stripos( $content, $top['anchor_text'] );
+				if ( false !== $pos ) {
+					$content = mb_substr( $content, 0, $pos ) . $link . mb_substr( $content, $pos + mb_strlen( $top['anchor_text'] ) );
+					wp_update_post( array(
+						'ID'           => $p->ID,
+						'post_content' => $content,
+					) );
+					$results[] = array( 'post' => $p->post_title, 'link' => $top['anchor_text'] . ' → ' . $top['url'] );
+				}
+			}
+		}
+
+		wp_send_json_success( array(
+			'processed' => count( $results ),
+			'results'   => $results,
+			'offset'    => $offset,
+			'total'     => $total,
+			'remaining' => max( 0, $total - $offset - $batch_size ),
+			'complete'  => ( $offset + $batch_size ) >= $total,
+		) );
 	}
 
 	public function ajax_adjust_tone() {

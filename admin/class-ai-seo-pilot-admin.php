@@ -742,9 +742,10 @@ class AI_SEO_Pilot_Admin {
 			wp_send_json_error( $response->get_error_message() );
 		}
 
-		$keywords = json_decode( preg_replace( '/^```(?:json)?\s*|\s*```$/i', '', trim( $response ) ), true );
+		$keywords = json_decode( $plugin->ai_engine->clean_json( $response ), true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			error_log( '[AI SEO Pilot] extract_keywords JSON parse error: ' . json_last_error_msg() . ' | raw response: ' . substr( $response, 0, 500 ) );
 			wp_send_json_error( __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );
 		}
 
@@ -788,7 +789,7 @@ class AI_SEO_Pilot_Admin {
 			wp_send_json_error( $response->get_error_message() );
 		}
 
-		$related = json_decode( preg_replace( '/^```(?:json)?\s*|\s*```$/i', '', trim( $response ) ), true );
+		$related = json_decode( $plugin->ai_engine->clean_json( $response ), true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			wp_send_json_error( __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );

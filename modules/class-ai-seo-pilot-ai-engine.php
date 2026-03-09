@@ -781,6 +781,35 @@ class AI_SEO_Pilot_AI_Engine {
 		return implode( "\n", $lines );
 	}
 
+	/* ── JSON Utilities ────────────────────────────────────────── */
+
+	/**
+	 * Clean a raw AI response so it can be parsed as JSON.
+	 *
+	 * Works with every provider (OpenAI, Anthropic, Gemini, xAI, Ollama)
+	 * by stripping markdown code fences, BOM, and stray text around JSON.
+	 *
+	 * @param string $raw Raw AI response text.
+	 * @return string Cleaned JSON string.
+	 */
+	public function clean_json( $raw ) {
+		$text = trim( $raw );
+
+		// Strip markdown code fences: ```json ... ``` or ``` ... ```
+		$text = preg_replace( '/^```(?:json|JSON)?\s*\n?/i', '', $text );
+		$text = preg_replace( '/\n?\s*```\s*$/', '', $text );
+
+		// If there is still no leading [ or {, try to extract the JSON substring.
+		$text = trim( $text );
+		if ( '' !== $text && '{' !== $text[0] && '[' !== $text[0] ) {
+			if ( preg_match( '/(\{[\s\S]*\}|\[[\s\S]*\])/', $text, $m ) ) {
+				$text = $m[1];
+			}
+		}
+
+		return $text;
+	}
+
 	/* ── API Communication ──────────────────────────────────────── */
 
 	/**
@@ -1002,9 +1031,8 @@ class AI_SEO_Pilot_AI_Engine {
 				),
 			),
 			'generationConfig'  => array(
-				'maxOutputTokens'  => $max_tokens,
-				'temperature'      => 0.7,
-				'responseMimeType' => 'application/json',
+				'maxOutputTokens' => $max_tokens,
+				'temperature'     => 0.7,
 			),
 		);
 

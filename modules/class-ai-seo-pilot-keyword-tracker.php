@@ -399,11 +399,8 @@ class AI_SEO_Pilot_Keyword_Tracker {
 	 * Parse JSON from AI response.
 	 */
 	private function parse_json_response( $response ) {
-		$response = trim( $response );
-		$response = preg_replace( '/^```(?:json)?\s*/i', '', $response );
-		$response = preg_replace( '/\s*```$/', '', $response );
-
-		$data = json_decode( $response, true );
+		$plugin = AI_SEO_Pilot::get_instance();
+		$data   = json_decode( $plugin->ai_engine->clean_json( $response ), true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			return new \WP_Error( 'json_parse_error', __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );

@@ -807,6 +807,21 @@ class AI_SEO_Pilot_AI_Engine {
 			}
 		}
 
+		// Sanitize control characters inside JSON string values.
+		// Gemini and other providers sometimes embed raw newlines/tabs
+		// inside strings which break json_decode().
+		$text = preg_replace_callback(
+			'/"(?:[^"\\\\]|\\\\.)*"/s',
+			function ( $match ) {
+				return str_replace(
+					array( "\n", "\r", "\t" ),
+					array( '\\n', '\\r', '\\t' ),
+					$match[0]
+				);
+			},
+			$text
+		);
+
 		return $text;
 	}
 

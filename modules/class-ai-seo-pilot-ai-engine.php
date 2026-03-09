@@ -760,9 +760,13 @@ class AI_SEO_Pilot_AI_Engine {
 			$lines[] = 'Excerpt: ' . $post->post_excerpt;
 		}
 
-		// Full content (truncated to ~3000 words to fit in context).
-		$plain = $this->extract_text_from_content( $post->post_content );
-		$words = explode( ' ', $plain );
+		// Full content — use render_content() to handle all page builders
+		// (Divi 4/5, Gutenberg, Elementor, WPBakery, Beaver Builder).
+		$plugin   = AI_SEO_Pilot::get_instance();
+		$rendered = $plugin->content_analyzer->render_content( $post->post_content );
+		$plain    = wp_strip_all_tags( $rendered );
+		$plain    = preg_replace( '/\s+/', ' ', trim( $plain ) );
+		$words    = explode( ' ', $plain );
 		if ( count( $words ) > 3000 ) {
 			$plain = implode( ' ', array_slice( $words, 0, 3000 ) ) . '...';
 		}

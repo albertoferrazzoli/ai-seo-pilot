@@ -119,7 +119,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 	 * @param string $content Raw post content.
 	 * @return string Clean HTML with standard tags (<p>, <h2>, <strong>, <ul>, etc.)
 	 */
-	private function render_content( $content ) {
+	public function render_content( $content ) {
 		if ( empty( $content ) ) {
 			return '';
 		}

@@ -396,42 +396,56 @@ class AI_SEO_Pilot_SEO_Checker {
 
 		$total_pct   = 0;
 		$ready_count = 0;
+		$low_posts   = array();
 
 		foreach ( $recent_posts as $p ) {
-			$content    = $p->post_content;
-			$enhancement = get_post_meta( $p->ID, '_aisp_readiness_enhancement', true );
-			if ( ! empty( $enhancement ) ) {
-				$content .= "\n" . $enhancement;
-			}
-			$result     = $plugin->content_analyzer->analyze( $content, $p->post_title );
+			$result     = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
 			$total_pct += $result['percentage'];
 			if ( $result['ai_ready'] ) {
 				$ready_count++;
+			} else {
+				$low_posts[] = array(
+					'id'    => $p->ID,
+					'title' => $p->post_title,
+					'pct'   => $result['percentage'],
+				);
 			}
 		}
 
 		$avg    = round( $total_pct / count( $recent_posts ) );
 		$status = $avg >= $threshold ? 'pass' : ( $avg >= 50 ? 'warning' : 'fail' );
 
+		// Build message with list of low-scoring posts and edit links.
+		$message = sprintf(
+			__( 'Average AI score: %1$d%%. %2$d of %3$d recent posts are AI-ready (%4$d%%+).', 'ai-seo-pilot' ),
+			$avg,
+			$ready_count,
+			count( $recent_posts ),
+			$threshold
+		);
+
+		if ( ! empty( $low_posts ) ) {
+			$message .= '<br><br><strong>' . __( 'Posts to improve:', 'ai-seo-pilot' ) . '</strong><ul style="margin:6px 0 0 16px; list-style:disc;">';
+			foreach ( $low_posts as $lp ) {
+				$edit_url = get_edit_post_link( $lp['id'], 'raw' );
+				$message .= sprintf(
+					'<li><a href="%s">%s</a> — %d%%</li>',
+					esc_url( $edit_url ),
+					esc_html( $lp['title'] ),
+					$lp['pct']
+				);
+			}
+			$message .= '</ul>';
+		}
+
 		return array(
 			'category'   => __( 'Content', 'ai-seo-pilot' ),
 			'label'      => __( 'Content AI-Readiness', 'ai-seo-pilot' ),
 			'severity'   => 'high',
 			'status'     => $status,
-			'message'    => sprintf(
-				/* translators: %1$d: avg percentage, %2$d: ready count, %3$d: total, %4$d: threshold */
-				__( 'Average AI score: %1$d%%. %2$d of %3$d recent posts are AI-ready (%4$d%%+).', 'ai-seo-pilot' ),
-				$avg,
-				$ready_count,
-				count( $recent_posts ),
-				$threshold
-			),
-			'fix'        => 'pass' !== $status ? __( 'Auto-generate FAQ, definitions, and statistics sections for low-scoring posts using AI.', 'ai-seo-pilot' ) : '',
-			'fix_action' => 'pass' !== $status ? array(
-				'type'   => 'batch_ajax',
-				'action' => 'ai_seo_pilot_batch_ai_readiness',
-				'label'  => __( 'Improve with AI', 'ai-seo-pilot' ),
-			) : null,
+			'message'    => $message,
+			'fix'        => 'pass' !== $status ? __( 'Open each post in the editor and use the AI SEO Pilot sidebar to improve content.', 'ai-seo-pilot' ) : '',
+			'fix_action' => null,
 		);
 	}
 
@@ -821,9 +835,9 @@ class AI_SEO_Pilot_SEO_Checker {
 			);
 		}
 
-		$site_url       = home_url();
-		$with_links     = 0;
-		$orphan_count   = 0;
+		$site_url      = home_url();
+		$with_links    = 0;
+		$orphan_posts  = array();
 
 		foreach ( $recent_posts as $p ) {
 			// Check for internal links in content.
@@ -831,31 +845,38 @@ class AI_SEO_Pilot_SEO_Checker {
 				preg_match( '/<a[^>]+href=["\']\/[^"\']/i', $p->post_content ) ) {
 				$with_links++;
 			} else {
-				$orphan_count++;
+				$orphan_posts[] = $p;
 			}
 		}
 
-		$pct    = round( $with_links / count( $recent_posts ) * 100 );
-		$status = $pct >= 70 ? 'pass' : ( $pct >= 40 ? 'warning' : 'fail' );
+		$orphan_count = count( $orphan_posts );
+		$pct          = round( $with_links / count( $recent_posts ) * 100 );
+		$status       = $pct >= 70 ? 'pass' : ( $pct >= 40 ? 'warning' : 'fail' );
+
+		$message = sprintf(
+			__( '%1$d / %2$d recent posts contain internal links. %3$d posts are orphaned (no internal links).', 'ai-seo-pilot' ),
+			$with_links,
+			count( $recent_posts ),
+			$orphan_count
+		);
+
+		if ( ! empty( $orphan_posts ) ) {
+			$message .= '<br><br><strong>' . __( 'Orphan posts:', 'ai-seo-pilot' ) . '</strong><ul style="margin:6px 0 0 16px; list-style:disc;">';
+			foreach ( $orphan_posts as $op ) {
+				$edit_url = get_edit_post_link( $op->ID, 'raw' );
+				$message .= sprintf( '<li><a href="%s">%s</a></li>', esc_url( $edit_url ), esc_html( $op->post_title ) );
+			}
+			$message .= '</ul>';
+		}
 
 		return array(
 			'category'   => __( 'Content Optimization', 'ai-seo-pilot' ),
 			'label'      => __( 'Internal Linking', 'ai-seo-pilot' ),
 			'severity'   => 'medium',
 			'status'     => $status,
-			'message'    => sprintf(
-				/* translators: %1$d: with links, %2$d: total, %3$d: orphans */
-				__( '%1$d / %2$d recent posts contain internal links. %3$d posts are orphaned (no internal links). Internal links help AI engines discover and rank related content.', 'ai-seo-pilot' ),
-				$with_links,
-				count( $recent_posts ),
-				$orphan_count
-			),
-			'fix'        => 'pass' !== $status ? __( 'Auto-insert internal links into orphan posts using AI.', 'ai-seo-pilot' ) : '',
-			'fix_action' => 'pass' !== $status ? array(
-				'type'   => 'batch_ajax',
-				'action' => 'ai_seo_pilot_batch_internal_links',
-				'label'  => __( 'Fix with AI', 'ai-seo-pilot' ),
-			) : null,
+			'message'    => $message,
+			'fix'        => 'pass' !== $status ? __( 'Open each orphan post in the editor and add internal links to related content.', 'ai-seo-pilot' ) : '',
+			'fix_action' => null,
 		);
 	}
 }

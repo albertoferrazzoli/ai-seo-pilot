@@ -7,7 +7,6 @@ class AI_SEO_Pilot_Public {
 
 	public function __construct() {
 		add_action( 'wp_head', array( $this, 'output_meta_description' ), 2 );
-		add_filter( 'the_content', array( $this, 'append_readiness_enhancement' ), 99 );
 	}
 
 	/**
@@ -28,23 +27,4 @@ class AI_SEO_Pilot_Public {
 		echo '<meta name="description" content="' . esc_attr( $desc ) . '">' . "\n";
 	}
 
-	/**
-	 * Append AI-readiness enhancement section to singular post/page content.
-	 * Stored in post meta to avoid corrupting page-builder (Divi) content.
-	 *
-	 * @param string $content The post content.
-	 * @return string
-	 */
-	public function append_readiness_enhancement( $content ) {
-		if ( ! is_singular() || ! in_the_loop() || ! is_main_query() ) {
-			return $content;
-		}
-
-		$enhancement = get_post_meta( get_the_ID(), '_aisp_readiness_enhancement', true );
-		if ( empty( $enhancement ) ) {
-			return $content;
-		}
-
-		return $content . "\n" . '<div class="aisp-readiness-enhancement">' . wp_kses_post( $enhancement ) . '</div>';
-	}
 }

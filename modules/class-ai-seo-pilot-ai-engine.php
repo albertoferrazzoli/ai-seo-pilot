@@ -578,39 +578,6 @@ class AI_SEO_Pilot_AI_Engine {
 	}
 
 	/**
-	 * Generate an enhancement section that addresses specific failing AI-readiness checks.
-	 *
-	 * @param int   $post_id       Post ID.
-	 * @param array $failed_checks Array of check names/descriptions that failed.
-	 * @return string|WP_Error Generated HTML or error.
-	 */
-	public function generate_readiness_enhancement( $post_id, $failed_checks ) {
-		$post_context = $this->get_post_context( $post_id );
-		if ( empty( $post_context ) ) {
-			return new \WP_Error( 'no_post', __( 'Post not found.', 'ai-seo-pilot' ) );
-		}
-
-		$year        = gmdate( 'Y' );
-		$checks_list = implode( "\n", array_map( function ( $c ) { return "- {$c}"; }, $failed_checks ) );
-
-		$prompt  = "Generate a supplementary section to append to this article that improves its AI-readiness score.\n\n";
-		$prompt .= "The content currently fails these checks:\n{$checks_list}\n\n";
-		$prompt .= "Requirements for the generated section:\n";
-		$prompt .= "- Include at least one <ul> or <ol> list with actionable items or key points\n";
-		$prompt .= "- Include specific numbers, percentages, or statistics (with sources like 'According to industry data...')\n";
-		$prompt .= "- Include freshness signals: reference the current year ({$year}), use words like 'updated', 'latest', 'currently'\n";
-		$prompt .= "- Start with a concise summary paragraph (under 40 words) using <strong> for key phrases\n";
-		$prompt .= "- Use semantic HTML: <p>, <ul>, <ol>, <strong>, <em>, <h3>\n";
-		$prompt .= "- Write in the same language as the original content\n";
-		$prompt .= "- Be factual, specific, and citable by AI search engines\n";
-		$prompt .= "- Do NOT include a top-level heading (<h2>) — the caller will add it\n\n";
-		$prompt .= "Return ONLY the HTML content, no markdown code blocks.\n\n";
-		$prompt .= "CONTENT:\n{$post_context}";
-
-		return $this->call_api( $prompt, 1500 );
-	}
-
-	/**
 	 * Suggest content improvements based on failed content analyzer checks.
 	 *
 	 * @param string $content       Post content.

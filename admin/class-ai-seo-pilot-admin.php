@@ -1043,7 +1043,12 @@ class AI_SEO_Pilot_Admin {
 
 		$low_scoring = array();
 		foreach ( $all_posts as $p ) {
-			$analysis = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
+			$content     = $p->post_content;
+			$enhancement = get_post_meta( $p->ID, '_aisp_readiness_enhancement', true );
+			if ( ! empty( $enhancement ) ) {
+				$content .= "\n" . $enhancement;
+			}
+			$analysis = $plugin->content_analyzer->analyze( $content, $p->post_title );
 			if ( $analysis['percentage'] < $threshold ) {
 				$low_scoring[] = array(
 					'post'     => $p,
@@ -1087,13 +1092,11 @@ class AI_SEO_Pilot_Admin {
 				$result = $plugin->ai_engine->generate_readiness_enhancement( $post->ID, $failed_descs );
 
 				if ( ! is_wp_error( $result ) && ! empty( trim( $result ) ) ) {
-					$heading  = __( 'Key Insights & Updates', 'ai-seo-pilot' );
-					$appended = "\n\n<h2>{$heading}</h2>\n" . $result;
+					$heading = __( 'Key Insights & Updates', 'ai-seo-pilot' );
+					$html    = "<h2>{$heading}</h2>\n" . $result;
 
-					wp_update_post( array(
-						'ID'           => $post->ID,
-						'post_content' => $post->post_content . $appended,
-					) );
+					// Store in post meta — never touch post_content (breaks Divi/page builders).
+					update_post_meta( $post->ID, '_aisp_readiness_enhancement', $html );
 				}
 			}
 

@@ -398,7 +398,12 @@ class AI_SEO_Pilot_SEO_Checker {
 		$ready_count = 0;
 
 		foreach ( $recent_posts as $p ) {
-			$result     = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
+			$content    = $p->post_content;
+			$enhancement = get_post_meta( $p->ID, '_aisp_readiness_enhancement', true );
+			if ( ! empty( $enhancement ) ) {
+				$content .= "\n" . $enhancement;
+			}
+			$result     = $plugin->content_analyzer->analyze( $content, $p->post_title );
 			$total_pct += $result['percentage'];
 			if ( $result['ai_ready'] ) {
 				$ready_count++;

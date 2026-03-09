@@ -109,6 +109,22 @@ class AI_SEO_Pilot_AI_Engine {
 		);
 	}
 
+	/* ── Public prompt helper ───────────────────────────────────── */
+
+	/**
+	 * Send a prompt to the configured AI provider.
+	 *
+	 * Thin public wrapper around the private call_api() method so that
+	 * other modules (e.g. Content Analyzer) can leverage the AI engine.
+	 *
+	 * @param string $prompt     The prompt text.
+	 * @param int    $max_tokens Max tokens for the response.
+	 * @return string|WP_Error Response text or error.
+	 */
+	public function prompt( $prompt, $max_tokens = 1000 ) {
+		return $this->call_api( $prompt, $max_tokens );
+	}
+
 	/* ── Public Getters ─────────────────────────────────────────── */
 
 	/**

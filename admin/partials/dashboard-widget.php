@@ -8,27 +8,55 @@ $bot_stats    = $plugin->ai_visibility->get_visit_stats( 7 );
 $crawl_health = $plugin->ai_visibility->get_crawl_health_score();
 $top_pages    = $plugin->ai_visibility->get_top_pages( 7, 3 );
 
-// AI readiness: sample last 10 published posts.
-$recent_posts   = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'posts_per_page' => 10 ) );
-$analyzed_count = 0;
-$ready_count    = 0;
-$total_pct      = 0;
-
 $ca_saved     = get_option( 'ai_seo_pilot_content_analysis', array() );
 $ca_threshold = ! empty( $ca_saved['ai_ready_threshold'] )
 	? (int) $ca_saved['ai_ready_threshold']
 	: AI_SEO_Pilot_Content_Analyzer::get_defaults()['ai_ready_threshold'];
 
-foreach ( $recent_posts as $p ) {
-	$result = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
-	$analyzed_count++;
-	$total_pct += $result['percentage'];
-	if ( $result['ai_ready'] ) {
-		$ready_count++;
+// Check for stored AI scores first.
+$ai_stored = $plugin->content_analyzer->get_stored_ai_scores();
+
+if ( $ai_stored && is_array( $ai_stored ) ) {
+	// Use stored AI results.
+	$analyzed_count = count( $ai_stored );
+	$ready_count    = 0;
+	$total_pct      = 0;
+	$ai_timestamp   = 0;
+
+	foreach ( $ai_stored as $r ) {
+		$total_pct += $r['percentage'];
+		if ( $r['ai_ready'] ) {
+			$ready_count++;
+		}
+		if ( ! empty( $r['timestamp'] ) && $r['timestamp'] > $ai_timestamp ) {
+			$ai_timestamp = $r['timestamp'];
+		}
 	}
+
+	$avg_score   = $analyzed_count > 0 ? round( $total_pct / $analyzed_count ) : 0;
+	$score_source = 'ai';
+} else {
+	// Fallback: fast regex analysis.
+	$recent_posts   = get_posts( array( 'post_type' => 'post', 'post_status' => 'publish', 'posts_per_page' => 10 ) );
+	$analyzed_count = 0;
+	$ready_count    = 0;
+	$total_pct      = 0;
+
+	foreach ( $recent_posts as $p ) {
+		$result = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
+		$analyzed_count++;
+		$total_pct += $result['percentage'];
+		if ( $result['ai_ready'] ) {
+			$ready_count++;
+		}
+	}
+
+	$avg_score    = $analyzed_count > 0 ? round( $total_pct / $analyzed_count ) : 0;
+	$score_source = 'regex';
+	$ai_timestamp = 0;
 }
 
-$avg_score = $analyzed_count > 0 ? round( $total_pct / $analyzed_count ) : 0;
+$ai_configured = $plugin->ai_engine->is_configured();
 
 // Features status.
 $features = array(
@@ -36,7 +64,7 @@ $features = array(
 	'schema'   => 'yes' === get_option( 'ai_seo_pilot_schema_enabled', 'yes' ),
 	'sitemap'  => 'yes' === get_option( 'ai_seo_pilot_sitemap_ai_enabled', 'yes' ),
 	'tracking' => 'yes' === get_option( 'ai_seo_pilot_ai_visibility_enabled', 'yes' ),
-	'ai_api'   => $plugin->ai_engine->is_configured(),
+	'ai_api'   => $ai_configured,
 );
 ?>
 <style>
@@ -57,6 +85,10 @@ $features = array(
 	.aisp-widget-table td:last-child { text-align: right; }
 	.aisp-widget-links { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 	.aisp-widget-links a { font-size: 12px; }
+	.aisp-widget-ai-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 12px; }
+	.aisp-widget-ai-bar .aisp-ai-badge { font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+	.aisp-widget-ai-bar .aisp-ai-badge.ai { background: #ede9fe; color: #7c3aed; }
+	.aisp-widget-ai-bar .aisp-ai-badge.regex { background: #f3f4f6; color: #6b7280; }
 </style>
 
 <div class="aisp-widget">
@@ -94,7 +126,7 @@ $features = array(
 				$score_bg = '#f59e0b';
 			}
 			?>
-			<span class="aisp-widget-score" style="background:<?php echo esc_attr( $score_bg ); ?>;">
+			<span class="aisp-widget-score" id="aisp-avg-score" style="background:<?php echo esc_attr( $score_bg ); ?>;">
 				<?php echo esc_html( $avg_score ); ?>%
 			</span>
 			<span class="lbl"><?php esc_html_e( 'Avg AI Score', 'ai-seo-pilot' ); ?></span>
@@ -103,14 +135,40 @@ $features = array(
 
 	<!-- AI Readiness -->
 	<?php if ( $analyzed_count > 0 ) : ?>
-		<p style="margin:0 0 6px;">
-			<strong><?php echo esc_html( $ready_count ); ?>/<?php echo esc_html( $analyzed_count ); ?></strong>
+		<p id="aisp-readiness" style="margin:0 0 6px;">
+			<strong><span id="aisp-ready-count"><?php echo esc_html( $ready_count ); ?></span>/<?php echo esc_html( $analyzed_count ); ?></strong>
 			<?php
 			/* translators: %d: threshold percentage */
 			echo esc_html( sprintf( __( 'recent posts are AI-ready (score %d+)', 'ai-seo-pilot' ), $ca_threshold ) );
-		?>
+			?>
 		</p>
 	<?php endif; ?>
+
+	<!-- Score Source + AI Analyze Button -->
+	<div class="aisp-widget-ai-bar">
+		<?php if ( 'ai' === $score_source ) : ?>
+			<span class="aisp-ai-badge ai">AI</span>
+			<span style="color:#6b7280;">
+				<?php
+				echo esc_html( sprintf(
+					__( 'Analyzed %s', 'ai-seo-pilot' ),
+					human_time_diff( $ai_timestamp ) . ' ' . __( 'ago', 'ai-seo-pilot' )
+				) );
+				?>
+			</span>
+		<?php else : ?>
+			<span class="aisp-ai-badge regex">Regex</span>
+			<span style="color:#6b7280;"><?php esc_html_e( 'Basic analysis (English patterns only)', 'ai-seo-pilot' ); ?></span>
+		<?php endif; ?>
+
+		<?php if ( $ai_configured ) : ?>
+			<button type="button" id="aisp-run-ai-btn" class="button button-small" style="margin-left:auto;">
+				<?php echo 'ai' === $score_source
+					? esc_html__( 'Re-analyze with AI', 'ai-seo-pilot' )
+					: esc_html__( 'Analyze with AI', 'ai-seo-pilot' ); ?>
+			</button>
+		<?php endif; ?>
+	</div>
 
 	<!-- Features Status -->
 	<div class="aisp-widget-features">
@@ -183,3 +241,58 @@ $features = array(
 		</a>
 	</div>
 </div>
+
+<?php if ( $ai_configured ) : ?>
+<script>
+(function() {
+	var btn = document.getElementById('aisp-run-ai-btn');
+	if (!btn) return;
+
+	btn.addEventListener('click', function() {
+		btn.disabled = true;
+		btn.textContent = '<?php echo esc_js( __( 'Analyzing...', 'ai-seo-pilot' ) ); ?>';
+
+		var data = new FormData();
+		data.append('action', 'aisp_run_ai_analysis');
+		data.append('_nonce', '<?php echo esc_js( wp_create_nonce( 'aisp_ai_analysis' ) ); ?>');
+
+		fetch(ajaxurl, { method: 'POST', body: data })
+			.then(function(r) { return r.json(); })
+			.then(function(res) {
+				if (res.success) {
+					var d = res.data;
+					// Update score badge.
+					var badge = document.getElementById('aisp-avg-score');
+					badge.textContent = d.avg_score + '%';
+					badge.style.background = d.avg_score >= <?php echo (int) $ca_threshold; ?> ? '#10b981' : (d.avg_score >= 50 ? '#f59e0b' : '#f43f5e');
+
+					// Update readiness count.
+					var rc = document.getElementById('aisp-ready-count');
+					if (rc) rc.textContent = d.ready_count;
+
+					// Update button and badge.
+					btn.textContent = '<?php echo esc_js( __( 'Re-analyze with AI', 'ai-seo-pilot' ) ); ?>';
+
+					// Replace source badge.
+					var bar = btn.closest('.aisp-widget-ai-bar');
+					var oldBadge = bar.querySelector('.aisp-ai-badge');
+					if (oldBadge) {
+						oldBadge.className = 'aisp-ai-badge ai';
+						oldBadge.textContent = 'AI';
+						oldBadge.nextElementSibling.textContent = '<?php echo esc_js( __( 'Analyzed just now', 'ai-seo-pilot' ) ); ?>';
+					}
+				} else {
+					alert(res.data || '<?php echo esc_js( __( 'Analysis failed.', 'ai-seo-pilot' ) ); ?>');
+					btn.textContent = '<?php echo esc_js( __( 'Analyze with AI', 'ai-seo-pilot' ) ); ?>';
+				}
+				btn.disabled = false;
+			})
+			.catch(function() {
+				alert('<?php echo esc_js( __( 'Network error.', 'ai-seo-pilot' ) ); ?>');
+				btn.disabled = false;
+				btn.textContent = '<?php echo esc_js( __( 'Analyze with AI', 'ai-seo-pilot' ) ); ?>';
+			});
+	});
+})();
+</script>
+<?php endif; ?>

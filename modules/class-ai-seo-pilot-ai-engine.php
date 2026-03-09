@@ -1066,13 +1066,6 @@ class AI_SEO_Pilot_AI_Engine {
 			return new \WP_Error( 'empty_response', "AI returned an empty response (finishReason: {$finish})." );
 		}
 
-		// Log truncated responses for debugging.
-		$finish_reason = $data['candidates'][0]['finishReason'] ?? '';
-		if ( 'STOP' !== $finish_reason ) {
-			$text_preview = substr( $data['candidates'][0]['content']['parts'][0]['text'], 0, 100 );
-			error_log( "[AI SEO Pilot] Gemini finishReason: {$finish_reason} | preview: {$text_preview}" );
-		}
-
 		return trim( $data['candidates'][0]['content']['parts'][0]['text'] );
 	}
 

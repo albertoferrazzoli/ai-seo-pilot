@@ -745,9 +745,6 @@ class AI_SEO_Pilot_Admin {
 		$keywords = json_decode( $plugin->ai_engine->clean_json( $response ), true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			$cleaned = $plugin->ai_engine->clean_json( $response );
-			file_put_contents( WP_CONTENT_DIR . '/ai-seo-debug-raw.txt', $response );
-			file_put_contents( WP_CONTENT_DIR . '/ai-seo-debug-cleaned.txt', $cleaned );
 			error_log( '[AI SEO Pilot] extract_keywords JSON parse error: ' . json_last_error_msg() );
 			wp_send_json_error( __( 'Failed to parse AI response.', 'ai-seo-pilot' ) );
 		}

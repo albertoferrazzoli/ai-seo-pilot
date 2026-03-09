@@ -1027,11 +1027,18 @@ class AI_SEO_Pilot_Admin {
 		}
 		$threshold = $settings['ai_ready_threshold'];
 
-		// Find published posts/pages below the AI-readiness threshold.
+		// Find published posts/pages below the AI-readiness threshold,
+		// excluding posts already improved in this batch run.
 		$all_posts = get_posts( array(
 			'post_type'      => array( 'post', 'page' ),
 			'post_status'    => 'publish',
 			'posts_per_page' => 50,
+			'meta_query'     => array(
+				array(
+					'key'     => '_aisp_ai_readiness_improved',
+					'compare' => 'NOT EXISTS',
+				),
+			),
 		) );
 
 		$low_scoring = array();
@@ -1048,6 +1055,9 @@ class AI_SEO_Pilot_Admin {
 		$total = count( $low_scoring );
 
 		if ( empty( $low_scoring ) ) {
+			// Clear all flags so the button can be used again next time.
+			delete_metadata( 'post', 0, '_aisp_ai_readiness_improved', '', true );
+
 			wp_send_json_success( array(
 				'processed' => 0,
 				'total'     => 0,
@@ -1106,11 +1116,19 @@ class AI_SEO_Pilot_Admin {
 					'ID'           => $post->ID,
 					'post_content' => $post->post_content . $appended,
 				) );
-				$processed++;
 			}
+
+			// Mark as processed regardless of outcome to avoid infinite loops.
+			update_post_meta( $post->ID, '_aisp_ai_readiness_improved', '1' );
+			$processed++;
 		}
 
 		$remaining_after = $total - $processed;
+
+		// When complete, clear all flags so the button can be used again later.
+		if ( $remaining_after <= 0 ) {
+			delete_metadata( 'post', 0, '_aisp_ai_readiness_improved', '', true );
+		}
 
 		wp_send_json_success( array(
 			'processed' => $processed,

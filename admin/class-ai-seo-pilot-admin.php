@@ -1066,13 +1066,6 @@ class AI_SEO_Pilot_Admin {
 			) );
 		}
 
-		// Map failed checks to section types we can auto-generate.
-		$check_to_section = array(
-			'qa_structure'       => 'faq',
-			'definitions'        => 'definitions',
-			'citable_statistics' => 'statistics',
-		);
-
 		$batch_size = 2;
 		$batch      = array_slice( $low_scoring, 0, $batch_size );
 		$processed  = 0;
@@ -1081,41 +1074,27 @@ class AI_SEO_Pilot_Admin {
 			$post     = $item['post'];
 			$analysis = $item['analysis'];
 
-			// Determine which sections to generate based on failed checks.
-			$sections_to_add = array();
+			// Collect descriptions of all failing checks for targeted AI generation.
+			$failed_descs = array();
 			foreach ( $analysis['checks'] as $check ) {
-				if ( 'poor' === $check['status'] && isset( $check_to_section[ $check['name'] ] ) ) {
-					$sections_to_add[] = $check_to_section[ $check['name'] ];
+				if ( 'poor' === $check['status'] || 'warning' === $check['status'] ) {
+					$failed_descs[] = $check['label'] . ': ' . $check['suggestion'];
 				}
 			}
 
-			// If no specific section mapped, add a FAQ section as default improvement.
-			if ( empty( $sections_to_add ) ) {
-				$sections_to_add[] = 'faq';
-			}
+			if ( ! empty( $failed_descs ) ) {
+				// Single AI call generates content addressing all failures at once.
+				$result = $plugin->ai_engine->generate_readiness_enhancement( $post->ID, $failed_descs );
 
-			// Limit to 2 sections per post to avoid excessive API calls.
-			$sections_to_add = array_slice( array_unique( $sections_to_add ), 0, 2 );
+				if ( ! is_wp_error( $result ) && ! empty( trim( $result ) ) ) {
+					$heading  = __( 'Key Insights & Updates', 'ai-seo-pilot' );
+					$appended = "\n\n<h2>{$heading}</h2>\n" . $result;
 
-			$appended = '';
-			foreach ( $sections_to_add as $section_type ) {
-				$result = $plugin->ai_engine->generate_content_section( $section_type, $post->ID );
-				if ( ! is_wp_error( $result ) && ! empty( $result ) ) {
-					$headings = array(
-						'faq'         => __( 'Frequently Asked Questions', 'ai-seo-pilot' ),
-						'definitions' => __( 'Key Definitions', 'ai-seo-pilot' ),
-						'statistics'  => __( 'Key Statistics', 'ai-seo-pilot' ),
-					);
-					$heading   = isset( $headings[ $section_type ] ) ? $headings[ $section_type ] : ucfirst( $section_type );
-					$appended .= "\n\n<h2>{$heading}</h2>\n" . $result;
+					wp_update_post( array(
+						'ID'           => $post->ID,
+						'post_content' => $post->post_content . $appended,
+					) );
 				}
-			}
-
-			if ( ! empty( $appended ) ) {
-				wp_update_post( array(
-					'ID'           => $post->ID,
-					'post_content' => $post->post_content . $appended,
-				) );
 			}
 
 			// Mark as processed regardless of outcome to avoid infinite loops.

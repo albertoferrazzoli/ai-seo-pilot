@@ -41,6 +41,7 @@ class AI_SEO_Pilot_Admin {
 		// Batch AI fix handlers (SEO Check page).
 		add_action( 'wp_ajax_ai_seo_pilot_batch_extract_keywords', array( $this, 'ajax_batch_extract_keywords' ) );
 		add_action( 'wp_ajax_ai_seo_pilot_batch_internal_links', array( $this, 'ajax_batch_internal_links' ) );
+		add_action( 'wp_ajax_ai_seo_pilot_batch_ai_readiness', array( $this, 'ajax_batch_ai_readiness' ) );
 
 		// Meta boxes.
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
@@ -880,12 +881,12 @@ class AI_SEO_Pilot_Admin {
 			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
 		}
 
-		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
 		$batch_size = 3;
 
 		global $wpdb;
 
-		// Get published posts/pages without a focus keyword.
+		// Always offset 0: successfully processed posts drop out of the
+		// result set on the next call (they now have a focus keyword).
 		$posts = $wpdb->get_results( $wpdb->prepare(
 			"SELECT p.ID FROM {$wpdb->posts} p
 			LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_ai_seo_pilot_focus_keyword'
@@ -893,12 +894,11 @@ class AI_SEO_Pilot_Admin {
 			AND p.post_status = 'publish'
 			AND (pm.meta_value IS NULL OR pm.meta_value = '')
 			ORDER BY p.ID ASC
-			LIMIT %d OFFSET %d",
-			$batch_size,
-			$offset
+			LIMIT %d",
+			$batch_size
 		) );
 
-		$total = (int) $wpdb->get_var(
+		$remaining = (int) $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$wpdb->posts} p
 			LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_ai_seo_pilot_focus_keyword'
 			WHERE p.post_type IN ('post','page')
@@ -924,12 +924,14 @@ class AI_SEO_Pilot_Admin {
 			$processed++;
 		}
 
+		$remaining_after = $remaining - $processed;
+
 		wp_send_json_success( array(
 			'processed' => $processed,
-			'offset'    => $offset,
-			'total'     => $total,
-			'remaining' => max( 0, $total - $offset - $batch_size ),
-			'complete'  => ( $offset + $batch_size ) >= $total,
+			'offset'    => 0,
+			'total'     => $remaining,
+			'remaining' => max( 0, $remaining_after ),
+			'complete'  => $remaining_after <= 0 || empty( $posts ),
 		) );
 	}
 
@@ -943,10 +945,10 @@ class AI_SEO_Pilot_Admin {
 			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
 		}
 
-		$offset     = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
 		$batch_size = 2;
 
-		// Get orphan posts (no internal links).
+		// Get orphan posts (no internal links). Re-evaluated each call
+		// since successfully linked posts drop out of the list.
 		$site_url = home_url();
 		$posts    = get_posts( array(
 			'post_type'      => array( 'post', 'page' ),
@@ -966,7 +968,7 @@ class AI_SEO_Pilot_Admin {
 		}
 
 		$total   = count( $orphans );
-		$batch   = array_slice( $orphans, $offset, $batch_size );
+		$batch   = array_slice( $orphans, 0, $batch_size );
 		$plugin  = AI_SEO_Pilot::get_instance();
 		$results = array();
 
@@ -995,13 +997,126 @@ class AI_SEO_Pilot_Admin {
 			}
 		}
 
+		$remaining_after = $total - count( $results );
+
 		wp_send_json_success( array(
 			'processed' => count( $results ),
 			'results'   => $results,
-			'offset'    => $offset,
+			'offset'    => 0,
 			'total'     => $total,
-			'remaining' => max( 0, $total - $offset - $batch_size ),
-			'complete'  => ( $offset + $batch_size ) >= $total,
+			'remaining' => max( 0, $remaining_after ),
+			'complete'  => $remaining_after <= 0 || empty( $batch ),
+		) );
+	}
+
+	/**
+	 * Batch improve AI-readiness by appending generated sections to low-scoring posts.
+	 */
+	public function ajax_batch_ai_readiness() {
+		check_ajax_referer( 'ai_seo_pilot_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( __( 'Permission denied.', 'ai-seo-pilot' ) );
+		}
+
+		$plugin    = AI_SEO_Pilot::get_instance();
+		$settings  = AI_SEO_Pilot_Content_Analyzer::get_defaults();
+		$saved     = get_option( 'ai_seo_pilot_content_analysis', array() );
+		if ( ! empty( $saved['ai_ready_threshold'] ) ) {
+			$settings['ai_ready_threshold'] = (int) $saved['ai_ready_threshold'];
+		}
+		$threshold = $settings['ai_ready_threshold'];
+
+		// Find published posts/pages below the AI-readiness threshold.
+		$all_posts = get_posts( array(
+			'post_type'      => array( 'post', 'page' ),
+			'post_status'    => 'publish',
+			'posts_per_page' => 50,
+		) );
+
+		$low_scoring = array();
+		foreach ( $all_posts as $p ) {
+			$analysis = $plugin->content_analyzer->analyze( $p->post_content, $p->post_title );
+			if ( $analysis['percentage'] < $threshold ) {
+				$low_scoring[] = array(
+					'post'     => $p,
+					'analysis' => $analysis,
+				);
+			}
+		}
+
+		$total = count( $low_scoring );
+
+		if ( empty( $low_scoring ) ) {
+			wp_send_json_success( array(
+				'processed' => 0,
+				'total'     => 0,
+				'remaining' => 0,
+				'complete'  => true,
+			) );
+		}
+
+		// Map failed checks to section types we can auto-generate.
+		$check_to_section = array(
+			'qa_structure'       => 'faq',
+			'definitions'        => 'definitions',
+			'citable_statistics' => 'statistics',
+		);
+
+		$batch_size = 2;
+		$batch      = array_slice( $low_scoring, 0, $batch_size );
+		$processed  = 0;
+
+		foreach ( $batch as $item ) {
+			$post     = $item['post'];
+			$analysis = $item['analysis'];
+
+			// Determine which sections to generate based on failed checks.
+			$sections_to_add = array();
+			foreach ( $analysis['checks'] as $check ) {
+				if ( 'poor' === $check['status'] && isset( $check_to_section[ $check['name'] ] ) ) {
+					$sections_to_add[] = $check_to_section[ $check['name'] ];
+				}
+			}
+
+			// If no specific section mapped, add a FAQ section as default improvement.
+			if ( empty( $sections_to_add ) ) {
+				$sections_to_add[] = 'faq';
+			}
+
+			// Limit to 2 sections per post to avoid excessive API calls.
+			$sections_to_add = array_slice( array_unique( $sections_to_add ), 0, 2 );
+
+			$appended = '';
+			foreach ( $sections_to_add as $section_type ) {
+				$result = $plugin->ai_engine->generate_content_section( $section_type, $post->ID );
+				if ( ! is_wp_error( $result ) && ! empty( $result ) ) {
+					$headings = array(
+						'faq'         => __( 'Frequently Asked Questions', 'ai-seo-pilot' ),
+						'definitions' => __( 'Key Definitions', 'ai-seo-pilot' ),
+						'statistics'  => __( 'Key Statistics', 'ai-seo-pilot' ),
+					);
+					$heading   = isset( $headings[ $section_type ] ) ? $headings[ $section_type ] : ucfirst( $section_type );
+					$appended .= "\n\n<h2>{$heading}</h2>\n" . $result;
+				}
+			}
+
+			if ( ! empty( $appended ) ) {
+				wp_update_post( array(
+					'ID'           => $post->ID,
+					'post_content' => $post->post_content . $appended,
+				) );
+				$processed++;
+			}
+		}
+
+		$remaining_after = $total - $processed;
+
+		wp_send_json_success( array(
+			'processed' => $processed,
+			'total'     => $total,
+			'remaining' => max( 0, $remaining_after ),
+			'complete'  => $remaining_after <= 0,
 		) );
 	}
 

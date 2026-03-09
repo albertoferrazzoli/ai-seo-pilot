@@ -361,23 +361,23 @@
 			var originalText = $btn.text();
 			var $status = $card.find('.aisp-batch-status');
 			var totalProcessed = 0;
+			var initialTotal = 0;
 
 			$btn.prop('disabled', true).text('Starting…');
 			$status.show();
 
-			function runBatch(offset) {
+			function runBatch() {
 				$.post(aiSeoPilot.ajaxUrl, {
 					action: batchAction,
-					nonce: aiSeoPilot.nonce,
-					offset: offset
+					nonce: aiSeoPilot.nonce
 				}, function (response) {
 					if (response.success) {
 						var d = response.data;
+						if (!initialTotal) initialTotal = d.total;
 						totalProcessed += d.processed;
-						var done = offset + (d.processed || 1);
-						var pct = d.total > 0 ? Math.min(100, Math.round(done / d.total * 100)) : 100;
+						var pct = initialTotal > 0 ? Math.min(100, Math.round(totalProcessed / initialTotal * 100)) : 100;
 						$btn.text(pct + '%');
-						$status.text(totalProcessed + ' / ' + d.total + ' processed');
+						$status.text(totalProcessed + ' / ' + initialTotal + ' processed');
 
 						if (d.complete) {
 							$btn.text('Done (' + totalProcessed + ')').addClass('disabled');
@@ -391,7 +391,7 @@
 								.find('.dashicons')
 								.attr('class', 'dashicons dashicons-yes-alt');
 						} else {
-							runBatch(d.offset + (d.processed || 3));
+							runBatch();
 						}
 					} else {
 						$btn.prop('disabled', false).text(originalText);
@@ -403,7 +403,7 @@
 				});
 			}
 
-			runBatch(0);
+			runBatch();
 		}
 	});
 

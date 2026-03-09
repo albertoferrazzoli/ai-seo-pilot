@@ -421,8 +421,12 @@ class AI_SEO_Pilot_SEO_Checker {
 				count( $recent_posts ),
 				$threshold
 			),
-			'fix'        => 'pass' !== $status ? __( 'Use the Gutenberg sidebar analyzer to improve individual posts.', 'ai-seo-pilot' ) : '',
-			'fix_action' => null,
+			'fix'        => 'pass' !== $status ? __( 'Auto-generate FAQ, definitions, and statistics sections for low-scoring posts using AI.', 'ai-seo-pilot' ) : '',
+			'fix_action' => 'pass' !== $status ? array(
+				'type'   => 'batch_ajax',
+				'action' => 'ai_seo_pilot_batch_ai_readiness',
+				'label'  => __( 'Improve with AI', 'ai-seo-pilot' ),
+			) : null,
 		);
 	}
 

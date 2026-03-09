@@ -1037,8 +1037,9 @@ class AI_SEO_Pilot_AI_Engine {
 				),
 			),
 			'generationConfig'  => array(
-				'maxOutputTokens' => $max_tokens,
+				'maxOutputTokens' => max( $max_tokens, 2048 ),
 				'temperature'     => 0.7,
+				'thinkingConfig'  => array( 'thinkingBudget' => 0 ),
 			),
 		);
 

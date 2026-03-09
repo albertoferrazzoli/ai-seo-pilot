@@ -1002,8 +1002,9 @@ class AI_SEO_Pilot_AI_Engine {
 				),
 			),
 			'generationConfig'  => array(
-				'maxOutputTokens' => $max_tokens,
-				'temperature'     => 0.7,
+				'maxOutputTokens'  => $max_tokens,
+				'temperature'      => 0.7,
+				'responseMimeType' => 'application/json',
 			),
 		);
 

@@ -100,6 +100,235 @@ class AI_SEO_Pilot_Content_Analyzer {
 		return $settings['checks'][ $check_name ];
 	}
 
+	/* ── Universal content extraction ─────────────────────────── */
+
+	/**
+	 * Extract standard HTML from any content format.
+	 *
+	 * This is a universal extractor that works with any page builder or editor:
+	 * - Divi 5 (JSON-in-HTML-comments with wp:divi/* blocks)
+	 * - Gutenberg (native WordPress blocks)
+	 * - Elementor (_elementor_data JSON in post meta)
+	 * - WPBakery / Visual Composer ([vc_*] shortcodes)
+	 * - Beaver Builder ([fl_builder_*] shortcodes)
+	 * - Divi 4 classic ([et_pb_*] shortcodes)
+	 * - Plain HTML
+	 *
+	 * Strategy: try multiple extraction methods, pick the richest result.
+	 *
+	 * @param string $content Raw post content.
+	 * @return string Clean HTML with standard tags (<p>, <h2>, <strong>, <ul>, etc.)
+	 */
+	private function render_content( $content ) {
+		if ( empty( $content ) ) {
+			return '';
+		}
+
+		// Already clean HTML with standard tags? Return as-is.
+		$has_standard_html = preg_match( '/<(?:p|h[1-6]|ul|ol|table)[\s>]/i', $content )
+			&& ! preg_match( '/<!--\s+wp:/', $content )
+			&& ! preg_match( '/\[(?:vc_|et_pb_|fl_builder)/', $content );
+
+		if ( $has_standard_html ) {
+			return $content;
+		}
+
+		$candidates = array();
+
+		// 1. Divi 5 blocks (JSON-in-comments).
+		if ( preg_match( '/<!--\s+wp:divi\//', $content ) ) {
+			$html = $this->extract_from_block_json( $content );
+			if ( ! empty( $html ) ) {
+				$candidates[] = $html;
+			}
+		}
+
+		// 2. Gutenberg blocks (native or third-party).
+		if ( preg_match( '/<!--\s+wp:/', $content ) ) {
+			// Try WordPress native rendering first.
+			if ( function_exists( 'do_blocks' ) ) {
+				$rendered = do_blocks( $content );
+				if ( function_exists( 'do_shortcode' ) ) {
+					$rendered = do_shortcode( $rendered );
+				}
+				if ( preg_match( '/<(?:p|h[1-6]|ul|ol|li|strong)[\s>]/i', $rendered ) ) {
+					$candidates[] = $rendered;
+				}
+			}
+
+			// Also try JSON extraction (works for any block storing content in JSON attrs).
+			if ( empty( $candidates ) ) {
+				$html = $this->extract_from_block_json( $content );
+				if ( ! empty( $html ) ) {
+					$candidates[] = $html;
+				}
+			}
+		}
+
+		// 3. Shortcode-based builders (WPBakery, Divi 4, Beaver Builder).
+		if ( preg_match( '/\[(?:vc_|et_pb_|fl_builder)/i', $content ) && function_exists( 'do_shortcode' ) ) {
+			$rendered = do_shortcode( $content );
+			if ( preg_match( '/<(?:p|h[1-6]|ul|ol|li|strong)[\s>]/i', $rendered ) ) {
+				$candidates[] = $rendered;
+			}
+		}
+
+		// Pick the richest candidate (most HTML tags).
+		if ( ! empty( $candidates ) ) {
+			$best    = '';
+			$best_ct = 0;
+			foreach ( $candidates as $c ) {
+				$tag_count = preg_match_all( '/<(?:p|h[1-6]|ul|ol|li|strong|em|table|tr|td|th)[\s>]/i', $c );
+				if ( $tag_count > $best_ct ) {
+					$best    = $c;
+					$best_ct = $tag_count;
+				}
+			}
+			if ( ! empty( $best ) ) {
+				return $best;
+			}
+		}
+
+		// 4. Last resort: strip block comments and shortcodes, return whatever HTML remains.
+		$raw = preg_replace( '/<!--\s+\/?wp:[^\-]*?-->/s', '', $content );
+		$raw = preg_replace( '/\[\/?[^\]]+\]/', '', $raw );
+
+		return $raw;
+	}
+
+	/**
+	 * Extract HTML from block comments that embed content as JSON attributes.
+	 *
+	 * Works with Divi 5, and any block that stores content in JSON.
+	 *
+	 * @param string $content Raw content with block comments.
+	 * @return string Extracted HTML.
+	 */
+	private function extract_from_block_json( $content ) {
+		$html_parts = array();
+
+		preg_match_all( '/<!--\s+wp:(\S+)\s+(\{.+?\})\s+(?:\/)?-->/s', $content, $blocks, PREG_SET_ORDER );
+
+		foreach ( $blocks as $block ) {
+			$block_type = $block[1];
+			$json       = json_decode( $block[2], true );
+
+			if ( ! is_array( $json ) ) {
+				continue;
+			}
+
+			// Heading blocks → wrap in proper heading tag.
+			if ( preg_match( '/heading$/i', $block_type ) ) {
+				$text  = $this->json_deep_value( $json, 'title' );
+				$level = $this->json_heading_level( $json );
+				if ( $text ) {
+					$html_parts[] = "<{$level}>{$text}</{$level}>";
+				}
+				continue;
+			}
+
+			// Text / content blocks → extract inner HTML.
+			$value = $this->json_deep_value( $json, 'content' );
+			if ( $value ) {
+				$html_parts[] = $value;
+				continue;
+			}
+
+			// Generic fallback: recursively find any HTML string in JSON.
+			$found = array();
+			$this->collect_html_strings( $json, $found );
+			foreach ( $found as $html ) {
+				$html_parts[] = $html;
+			}
+		}
+
+		return implode( "\n", $html_parts );
+	}
+
+	/**
+	 * Extract a value from block JSON, trying multiple common paths.
+	 *
+	 * Paths tried (covers Divi 5, Kadence, GenerateBlocks, etc.):
+	 * - {key}.innerContent.desktop.value  (Divi 5)
+	 * - {key}.text                        (Kadence, GenerateBlocks)
+	 * - {key}                             (direct string value)
+	 *
+	 * @param array  $json Block JSON.
+	 * @param string $key  Top-level key ('content', 'title', 'text').
+	 * @return string|null
+	 */
+	private function json_deep_value( $json, $key ) {
+		// Divi 5 path.
+		$val = $json[ $key ]['innerContent']['desktop']['value'] ?? null;
+		if ( is_string( $val ) && ! empty( $val ) ) {
+			return $val;
+		}
+
+		// Generic nested text path.
+		$val = $json[ $key ]['text'] ?? null;
+		if ( is_string( $val ) && ! empty( $val ) ) {
+			return $val;
+		}
+
+		// Direct string value.
+		$val = $json[ $key ] ?? null;
+		if ( is_string( $val ) && ! empty( $val ) && preg_match( '/<[a-z]/i', $val ) ) {
+			return $val;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Extract heading level from block JSON (supports multiple builder formats).
+	 *
+	 * @param array $json Block JSON.
+	 * @return string h1-h6, defaults to h2.
+	 */
+	private function json_heading_level( $json ) {
+		// Divi 5: title.decoration.font.font.desktop.value.headingLevel
+		$level = $json['title']['decoration']['font']['font']['desktop']['value']['headingLevel'] ?? null;
+		if ( $level && preg_match( '/^h[1-6]$/', $level ) ) {
+			return $level;
+		}
+
+		// Gutenberg / Kadence: level or htmlTag
+		$level = $json['level'] ?? $json['htmlTag'] ?? $json['tag'] ?? null;
+		if ( is_int( $level ) && $level >= 1 && $level <= 6 ) {
+			return 'h' . $level;
+		}
+		if ( is_string( $level ) && preg_match( '/^h[1-6]$/', $level ) ) {
+			return $level;
+		}
+
+		return 'h2';
+	}
+
+	/**
+	 * Recursively collect HTML strings from any JSON structure.
+	 *
+	 * @param mixed $data   JSON data.
+	 * @param array $found  Collected HTML strings (by reference).
+	 */
+	private function collect_html_strings( $data, &$found ) {
+		if ( is_string( $data ) ) {
+			// Skip CSS/style content.
+			if ( preg_match( '/^\s*(?:<style|display:|width:|height:|font-)/i', $data ) ) {
+				return;
+			}
+			// Collect strings that contain HTML tags.
+			if ( preg_match( '/<(?:p|h[1-6]|ul|ol|li|strong|em|b|table|div|span|a)[\s>]/i', $data ) ) {
+				$found[] = $data;
+			}
+			return;
+		}
+		if ( is_array( $data ) ) {
+			foreach ( $data as $value ) {
+				$this->collect_html_strings( $value, $found );
+			}
+		}
+	}
+
 	/* ── REST API ─────────────────────────────────────────────── */
 
 	/**
@@ -177,12 +406,13 @@ class AI_SEO_Pilot_Content_Analyzer {
 		$results   = array();
 
 		foreach ( $posts as $p ) {
-			$plain     = wp_strip_all_tags( $p->post_content );
-			$ai_scores = $this->call_ai_for_post( $p->post_content, $plain, $p->post_title );
+			$rendered  = $this->render_content( $p->post_content );
+			$plain     = wp_strip_all_tags( $rendered );
+			$ai_scores = $this->call_ai_for_post( $rendered, $plain, $p->post_title );
 
 			if ( null === $ai_scores ) {
 				// AI call failed — use regex fallback for this post.
-				$analysis = $this->analyze( $p->post_content, $p->post_title );
+				$analysis = $this->analyze( $rendered, $p->post_title );
 				$results[ $p->ID ] = array(
 					'percentage' => $analysis['percentage'],
 					'ai_ready'   => $analysis['ai_ready'],
@@ -194,7 +424,7 @@ class AI_SEO_Pilot_Content_Analyzer {
 			}
 
 			// Build full analysis merging AI scores + regex for non-AI checks.
-			$analysis = $this->build_merged_analysis( $p->post_content, $plain, $p->post_title, $ai_scores );
+			$analysis = $this->build_merged_analysis( $rendered, $plain, $p->post_title, $ai_scores );
 
 			$results[ $p->ID ] = array(
 				'percentage' => $analysis['percentage'],
@@ -408,6 +638,7 @@ PROMPT;
 	 * @return array{score: int, max_score: int, percentage: int, ai_ready: bool, checks: array}
 	 */
 	public function analyze( $content, $title ) {
+		$content  = $this->render_content( $content );
 		$plain    = wp_strip_all_tags( $content );
 		$settings = $this->get_settings();
 
